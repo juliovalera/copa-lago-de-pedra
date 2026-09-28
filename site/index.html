@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123e32">
+  <meta name="description" content="Consulte a classificação, os números e a evolução dos botonistas na I Copa Lago de Pedra.">
+  <title>I Copa Lago de Pedra · Classificação</title>
+  <link rel="icon" href="icon.svg?v=24a579631b59" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=fe9cb5b2ec6e">
+  <script src="data.js?v=c452e00511eb" defer></script>
+  <script src="app.js?v=9aef8cc5a8f0" defer></script>
+</head>
+<body>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+  <header class="topbar">
+    <a class="header-logo" href="#classificacao" aria-label="Copa Lago de Pedra, início"><img src="lago_de_pedra.png?v=7512be844834" alt="I Copa Lago de Pedra de Futebol de Botão" width="110" height="110" fetchpriority="high"></a>
+    <div class="header-title">I COPA LAGO DE PEDRA<small>FUTEBOL DE MESA · 1ª EDIÇÃO</small></div>
+    <img class="league-logo" src="liga_mogiana.png?v=1d5a02ec580c" alt="Liga Mogiana de Futebol de Botão" width="100" height="110" fetchpriority="high">
+  </header>
+  <div class="text-size-controls" role="group" aria-label="Tamanho do texto">
+    <button id="decrease-text" type="button" aria-label="Diminuir tamanho do texto">A−</button>
+    <button id="increase-text" type="button" aria-label="Aumentar tamanho do texto">A+</button>
+  </div>
+  <main id="conteudo">
+    <section class="hero competition-banner" aria-labelledby="title">
+      <div class="competition-heading"><div class="eyebrow"><span></span> TABELA OFICIAL</div><h1 id="title">I Copa Lago de Pedra<br>de Futebol de Botão</h1><p>Pontos corridos <span aria-hidden="true">·</span> Turno e returno</p></div>
+      <dl class="competition-facts">
+        <div><dt>Botões</dt><dd>Oficiais</dd></div>
+        <div><dt>Regra</dt><dd>12 Toques</dd></div>
+        <div><dt>Formato</dt><dd>Pontos corridos</dd></div>
+        <div><dt>Rodadas</dt><dd>50</dd></div>
+        <div><dt>Participantes</dt><dd id="competition-players">26</dd></div>
+        <div><dt>Jogos</dt><dd id="competition-games">650</dd></div>
+        <div><dt>Abertura</dt><dd><time datetime="2026-09-20">20/09/2026</time></dd></div>
+        <div><dt>Horário</dt><dd>10h</dd></div>
+        <div><dt>Local</dt><dd>Lago de Pedra <span class="venue-city">Descalvado/SP</span></dd></div>
+        <div><dt>Inscrições</dt><dd>Gratuitas</dd></div>
+      </dl>
+    </section>
+    <div class="section-intro"><div><span class="eyebrow dark">I COPA LAGO DE PEDRA</span><h2>Por dentro da copa</h2></div><p id="import-date"></p></div>
+    <section class="stats" aria-label="Resumo da competição" id="summary"></section>
+    <nav class="tabs" aria-label="Seções da copa"><a href="#classificacao" data-page="classificacao" aria-current="page">Classificação</a><a href="#jogos" data-page="jogos">Jogos</a><a href="#evolucao" data-page="evolucao">Evolução</a></nav>
+    <section id="classificacao" class="page" aria-labelledby="ranking-title">
+      <div class="panel-heading"><div><h2 id="ranking-title">Classificação geral</h2><p>Toque no nome para ver os números do botonista.</p></div><button class="secondary" id="download">↓ Baixar tabela</button></div>
+      <div class="filters"><label class="search"><span class="sr-only">Buscar botonista</span><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></svg><input id="search" type="search" placeholder="Buscar seu nome ou de um botonista…" autocomplete="off"></label><label class="sort-label"><span class="sr-only">Ordenar a visualização</span><select id="sort"><option value="position">Pontos, saldo e gols</option><option value="points">Mais pontos</option><option value="goalsFor">Mais gols marcados</option><option value="percentage">Maior aproveitamento</option><option value="name">Nome: A → Z</option></select></label></div>
+      <div class="list-toolbar"><div class="chips" role="group" aria-label="Filtrar participantes"><button class="chip active" data-filter="all" aria-pressed="true">Todos</button><button class="chip" data-filter="favorites" aria-pressed="false">☆ Favoritos</button><button class="chip" data-filter="played" aria-pressed="false">Com jogos</button></div><span id="result-count" role="status" aria-live="polite"></span></div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Tabela de classificação. Role horizontalmente para ver todas as estatísticas."><table><caption class="sr-only">Classificação recalculada pelos placares. Classificação por pontos, vitórias, saldo de gols e gols marcados.</caption><thead><tr><th scope="col">POS.</th><th scope="col" class="player-col">BOTONISTA</th><th scope="col"><abbr title="Pontos ganhos">PG</abbr></th><th scope="col"><abbr title="Jogos">J</abbr></th><th scope="col"><abbr title="Vitórias">V</abbr></th><th scope="col"><abbr title="Empates">E</abbr></th><th scope="col"><abbr title="Derrotas">D</abbr></th><th scope="col"><abbr title="Gols marcados">GM</abbr></th><th scope="col"><abbr title="Gols sofridos">GS</abbr></th><th scope="col"><abbr title="Saldo de gols">SG</abbr></th><th scope="col"><abbr title="Aproveitamento dos pontos disputados">APROV.</abbr></th><th scope="col"><span class="sr-only">Favorito</span>☆</th></tr></thead><tbody id="ranking-body"></tbody></table></div>
+      <div id="empty" class="empty" hidden><span aria-hidden="true">⌕</span><h3>Nenhum botonista por aqui</h3><p id="empty-message"></p><button class="secondary" id="clear-filters">Mostrar todos</button></div>
+      <div class="table-foot"><span><i class="legend-dot"></i> Critérios: PG → V → SG → GM</span><span class="mobile-hint">Deslize a tabela para ver mais →</span><span>☆ Salve seus favoritos neste dispositivo</span></div>
+      <details class="legend"><summary>Entenda os números da tabela</summary><p><strong>PG</strong> pontos ganhos · <strong>J</strong> jogos · <strong>V</strong> vitórias · <strong>E</strong> empates · <strong>D</strong> derrotas · <strong>GM</strong> gols marcados · <strong>GS</strong> gols sofridos · <strong>SG</strong> saldo de gols · <strong>APROV.</strong> PG ÷ (3 × J). Sem jogos, o aproveitamento não se aplica.</p><p>Vitória: 3 pontos. Empate: 1 ponto. Derrota: 0. Classificação: PG, V, SG e GM, em ordem decrescente. Igualdade nos quatro critérios resulta em posição compartilhada. Os filtros e a ordenação mudam apenas a visualização.</p></details>
+    </section>
+    <section id="jogos" class="page" hidden aria-labelledby="games-title">
+      <div class="panel-heading"><div><h2 id="games-title">Tabela de jogos</h2><p>Turno e returno. Consulte os placares e os confrontos de cada botonista.</p></div></div>
+      <div class="games-summary" id="games-summary"></div>
+      <p class="games-note">Sem placar significa resultado ainda não informado. O documento não traz datas ou horários de cada partida.</p>
+      <div class="game-filters"><label>Botonista<select id="game-player"><option value="">Todos os botonistas</option></select></label><label>Rodada<select id="game-round"><option value="">Todas as rodadas</option></select></label><label>Situação<select id="game-status"><option value="">Todos os jogos</option><option value="played">Com resultado</option><option value="pending">Sem resultado</option></select></label><button id="clear-games" class="secondary">Limpar filtros</button></div>
+      <p id="games-count" role="status" aria-live="polite"></p><div id="games-list"></div>
+      <div class="games-pagination"><button id="games-prev" class="secondary">← Anterior</button><span id="games-page" aria-live="polite"></span><button id="games-next" class="secondary">Próxima →</button></div>
+    </section>
+    <section id="evolucao" class="page" hidden aria-labelledby="history-title"><div class="panel-heading"><div><h2 id="history-title">Cada data, uma nova história</h2><p>Acompanhe as posições registradas ao longo da copa.</p></div></div><label class="history-label" for="history-player">Escolha o botonista</label><select id="history-player"></select><div id="history-content"></div></section>
+    <footer><a class="footer-brand" href="#classificacao">◉ &nbsp; LAGO DE PEDRA</a><p>Futebol de mesa. Encontros de verdade.</p><span>Fonte: tabela de jogos da competição</span></footer>
+  </main>
+  <dialog id="player-dialog" aria-labelledby="player-title"><div class="dialog-top"><span class="eyebrow dark">PERFIL DO BOTONISTA</span><button id="close-dialog" class="icon-button" aria-label="Fechar perfil">×</button></div><div id="player-content"></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript><p class="notice">Ative o JavaScript para consultar a tabela interativa.</p></noscript>
+</body>
+</html>
