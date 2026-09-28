@@ -23,7 +23,7 @@ Sistema da I Copa Lago de Pedra, desenvolvido por **Júlio César Valera**. A ve
 | Recurso | Como ajuda |
 | --- | --- |
 | Classificação automática | Vitória vale 3 pontos e empate vale 1. Critérios: pontos, vitórias, saldo de gols e gols marcados. |
-| Tabela de jogos | Filtros por botonista, rodada e situação; favoritos ficam no próprio dispositivo. |
+| Tabela de jogos | Filtros por botonista, rodada e situação; favoritos ficam no próprio dispositivo, vinculados ao identificador do jogador para resistir a correções de nome. |
 | Evolução | Gráfico e tabela de posições e pontos ao final de cada data com jogos. |
 | Súmula imprimível | Permite escolher a data da partida e gerar um QR para registrar o resultado nessa data. |
 | Contas e permissões | Botonistas cuidam de seus jogos; administradores têm responsabilidades distintas. |
@@ -124,7 +124,7 @@ Preencha o bloco `smtp` do arquivo privado ou use estas variáveis:
 | `COPA_SMTP_FROM_NAME` | Nome que aparece como remetente |
 | `COPA_NOTIFY_EMAIL` | Destinatário das cópias ao organizador; opcional |
 
-Os avisos aos jogadores usam o e-mail da conta vinculada a cada participante. Resultados novos, corrigidos ou removidos geram avisos; salvar sem mudança não gera outro envio. Falhas de SMTP não desfazem o resultado e podem ser tratadas na Auditoria pelo administrador máximo. O envio acontece após a gravação, durante a requisição, e pode demorar se o SMTP estiver lento.
+Os avisos aos jogadores usam o e-mail da conta vinculada a cada participante. Resultados novos, corrigidos ou removidos geram avisos; salvar sem mudança não gera outro envio. Falhas de SMTP não desfazem o resultado e podem ser tratadas na Auditoria pelo administrador máximo. Os avisos ficam em uma fila e são enviados por tarefa agendada, com até cinco tentativas automáticas. **Configure o agendamento ao instalar esta versão**, seguindo [E-mails em segundo plano](EMAILS_EM_SEGUNDO_PLANO.md). Os convites de acesso continuam sendo enviados pela tela de Usuários.
 
 **Atualização de instalações anteriores:** configure `notification_email` no `config.php` ou `COPA_NOTIFY_EMAIL` para manter as cópias ao organizador. O endereço deixou de ficar fixo no código. Sem esse valor, apenas as cópias ao organizador ficam desativadas.
 
@@ -166,6 +166,7 @@ scripts/check_publication.py # Conferência dos arquivos preparados no Git
 Com PHP e as extensões configurados, a partir da raiz:
 
 ```bash
+php painel_php/tests/queue_and_dates.php
 php painel_php/tests/history.php
 php painel_php/tests/notifications.php
 php painel_php/tests/match_notifications.php

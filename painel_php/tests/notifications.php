@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/referee.php'; // Memória e SMTP simulado; nenhum e-mail real.
+function saveAndDeliverResult(...$args): void { savePanelResult(...$args); processNotificationQueue(100); }
+function saveAndDeliverReferee(...$args): void { saveRefereeResult(...$args); processNotificationQueue(100); }
+function linkAndDeliver(...$args): array { $link=dailyRefereeLink(...$args); processNotificationQueue(100); return $link; }
+function renameAndDeliver(...$args): void { renamePlayer(...$args); processNotificationQueue(100); }
+processNotificationQueue(100);
+
 $pdo->prepare('INSERT INTO users(id,name,username,email,player_id,is_active,created_at) VALUES (1,?,?,?,?,1,?)')->execute(['Botonista de teste','atleta','teste@example.invalid',1,date('c')]);
 $_SESSION = ['user_id'=>1];
 $insertGame->execute([201,201]);
@@ -8,43 +14,44 @@ $organizerEmails = static fn(): array => array_values(array_filter($GLOBALS['tes
 $count = static fn(): int => count($organizerEmails());
 $lastOrganizer = static fn(): array => $organizerEmails()[count($organizerEmails())-1];
 $initial = $count();
-savePanelResult(201, 3, 2, date('Y-m-d'));
+saveAndDeliverResult(201, 3, 2, date('Y-m-d'));
 check($count() === $initial+1, 'resultado do botonista gera um aviso após o commit');
 $email = $lastOrganizer();
 check($email['recipient'] === 'organizer@example.invalid' && str_contains($email['text'], 'Botonista de teste') && str_contains($email['text'], 'Gols A: 3'), 'aviso tem destinatário, autor e placar corretos');
-savePanelResult(201, 3, 2, date('Y-m-d'));
+saveAndDeliverResult(201, 3, 2, date('Y-m-d'));
 check($count() === $initial+1, 'salvar sem mudança não envia aviso repetido');
 $GLOBALS['testSmtpFailure'] = true;
-savePanelResult(201, 4, 2, date('Y-m-d'));
+saveAndDeliverResult(201, 4, 2, date('Y-m-d'));
 check(gameById(201)['score_a'] === 4, 'falha SMTP não impede salvamento');
 $failed = $pdo->query("SELECT event_id FROM email_notifications WHERE status='failed' AND recipient='organizer@example.invalid' ORDER BY rowid DESC LIMIT 1")->fetchColumn();
 check((bool) $failed, 'falha registrada para consulta e nova tentativa');
 $GLOBALS['testSmtpFailure'] = false;
-$pdo->prepare("UPDATE email_notifications SET status='pending' WHERE event_id=? AND recipient='organizer@example.invalid'")->execute([$failed]);
+$pdo->prepare("UPDATE email_notifications SET status='pending', next_attempt_at=NULL WHERE event_id=? AND recipient='organizer@example.invalid'")->execute([$failed]);
 sendPlayerNotification($failed);
 sendPlayerNotification($failed);
 check($count() === $initial+2, 'aviso confirmado não é enviado novamente');
-renamePlayer(1,'Nome corrigido','Teste A');
+renameAndDeliver(1,'Nome corrigido','Teste A');
 check($count() === $initial+3 && str_contains($lastOrganizer()['text'], 'Nome corrigido'), 'nome corrigido gera aviso');
-savePanelResult(201,null,null,'');
+saveAndDeliverResult(201,null,null,'');
 check($count() === $initial+4 && str_contains($lastOrganizer()['subject'], 'removido'), 'remoção de resultado gera aviso');
-$link = dailyRefereeLink(201);
+$link = linkAndDeliver(201);
 check($count() === $initial+5, 'súmula criada por botonista gera aviso');
 $_SESSION = [];
-saveRefereeResult($link['token'],1,0);
+saveAndDeliverReferee($link['token'],1,0);
 $email = $lastOrganizer();
 check($count() === $initial+6 && str_contains($email['text'],'QR Code') && !str_contains($email['text'],$link['token']), 'QR gera aviso sem divulgar token e sem presumir identidade');
 $_SESSION = ['legacy_admin'=>true];
-savePanelResult(201,2,0,date('Y-m-d'));
+saveAndDeliverResult(201,2,0,date('Y-m-d'));
 check($count() === $initial+6, 'alteração administrativa não dispara aviso de jogador');
 $_SESSION = ['user_id'=>1];
 $pdo->exec("CREATE TRIGGER fail_notification BEFORE INSERT ON email_notifications BEGIN SELECT RAISE(ABORT, 'falha'); END");
 $blocked = false;
-try { savePanelResult(201,9,9,date('Y-m-d')); } catch (PDOException $e) { $blocked = true; }
+try { saveAndDeliverResult(201,9,9,date('Y-m-d')); } catch (PDOException $e) { $blocked = true; }
 check($blocked && gameById(201)['score_a'] === 2 && $count() === $initial+6, 'transação revertida não dispara e-mail');
 $pdo->exec('DROP TRIGGER fail_notification');
 $_SESSION = [];
 auditedTransaction(static function (): void {
     auditRecord('Senha definida e conta ativada', 'Usuário 1', [], ['ativo'=>1,'senha_definida'=>true,'jogador_id'=>1], 'Convite', 'Botonista de teste');
 });
+processNotificationQueue(100);
 check($count() === $initial+7 && str_contains($lastOrganizer()['subject'], 'conta ativada'), 'ativação por convite de botonista gera aviso sem senha');

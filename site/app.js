@@ -9,7 +9,7 @@
   const formatGameDate = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR') : '';
   const initials = name => name.split(/\s+/).slice(0,2).map(n => n[0]).join('');
   const signed = value => value > 0 ? '+' + value : String(value);
-  const favoriteKey = 'copa-lago-de-pedra-favorites';
+  const favoriteKey = 'copa-lago-de-pedra-favorites-v2';
   const textSizeKey = 'copa-lago-de-pedra-text-size';
   const textScales = [1, 1.12, 1.25];
   let textSize = 0;
@@ -38,7 +38,17 @@
     toast(`Texto aumentado para ${Math.round(textScales[textSize] * 100)}%.`);
   });
   let saved = [];
-  try { const value = JSON.parse(localStorage.getItem(favoriteKey) || '[]'); if (Array.isArray(value)) saved = value.filter(v => typeof v === 'string'); } catch {}
+  try {
+    const stored = localStorage.getItem(favoriteKey);
+    if (stored !== null) {
+      const value = JSON.parse(stored);
+      if (Array.isArray(value)) saved = value.filter(v => typeof v === 'string');
+    } else {
+      const legacy = JSON.parse(localStorage.getItem('copa-lago-de-pedra-favorites') || '[]');
+      if (Array.isArray(legacy)) saved = data.players.filter(p => legacy.includes(p.name)).map(p => p.id);
+      localStorage.setItem(favoriteKey, JSON.stringify(saved));
+    }
+  } catch {}
   const favorites = new Set(saved);
   let filter = 'all';
   let dialogPlayer = null;
@@ -63,7 +73,7 @@
     toastTimer = setTimeout(() => { $('#toast').textContent = ''; }, 3500);
   }
   function toggleFavorite(p) {
-    if (favorites.has(p.name)) favorites.delete(p.name); else favorites.add(p.name);
+    if (favorites.has(p.id)) favorites.delete(p.id); else favorites.add(p.id);
     try { localStorage.setItem(favoriteKey, JSON.stringify([...favorites])); }
     catch { toast('Favoritos disponíveis apenas enquanto esta página estiver aberta.'); }
     renderRanking();
@@ -71,7 +81,7 @@
   }
   function currentPlayers() {
     const query = normalize($('#search').value.trim());
-    const list = players.filter(p => normalize(p.name).includes(query) && (filter !== 'favorites' || favorites.has(p.name)) && (filter !== 'played' || p.played > 0));
+    const list = players.filter(p => normalize(p.name).includes(query) && (filter !== 'favorites' || favorites.has(p.id)) && (filter !== 'played' || p.played > 0));
     const sort = $('#sort').value;
     return list.sort((a,b) => {
       if (sort === 'name') return a.name.localeCompare(b.name,'pt-BR');
@@ -85,7 +95,7 @@
     $('#ranking-body').innerHTML = list.map(p => {
       const differenceIssue = data.issues.some(i => i.cell === `K${p.sourceRow}`);
       const flag = '<span class="flag" aria-label="Valor a conferir" title="Valor a conferir; veja o perfil">*</span>';
-      return `<tr><td><span class="rank ${p.position===1?'first':p.position<=3?'top':''}">${p.position}</span></td><td><button class="player-button" data-player="${p.id}" aria-label="Ver perfil de ${escape(p.name)}"><span class="avatar" aria-hidden="true">${escape(initials(p.name))}</span><span class="player-name">${escape(p.name)}</span></button></td><td>${p.points}</td><td>${p.played}</td><td>${p.wins}</td><td>${p.draws}</td><td>${p.losses}</td><td>${p.goalsFor}</td><td>${p.goalsAgainst}</td><td>${signed(p.goalDifference)}${differenceIssue?flag:''}</td><td class="percent">${formatPercentage(p)}<span class="percent-bar" aria-hidden="true"><i style="width:${Math.min(100,Math.max(0,percentage(p) || 0))}%"></i></span></td><td><button class="fav" data-favorite="${p.id}" aria-pressed="${favorites.has(p.name)}" aria-label="${favorites.has(p.name)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.has(p.name)?'dos':'aos'} favoritos">${favorites.has(p.name)?'★':'☆'}</button></td></tr>`;
+      return `<tr><td><span class="rank ${p.position===1?'first':p.position<=3?'top':''}">${p.position}</span></td><td><button class="player-button" data-player="${p.id}" aria-label="Ver perfil de ${escape(p.name)}"><span class="avatar" aria-hidden="true">${escape(initials(p.name))}</span><span class="player-name">${escape(p.name)}</span></button></td><td>${p.points}</td><td>${p.played}</td><td>${p.wins}</td><td>${p.draws}</td><td>${p.losses}</td><td>${p.goalsFor}</td><td>${p.goalsAgainst}</td><td>${signed(p.goalDifference)}${differenceIssue?flag:''}</td><td class="percent">${formatPercentage(p)}<span class="percent-bar" aria-hidden="true"><i style="width:${Math.min(100,Math.max(0,percentage(p) || 0))}%"></i></span></td><td><button class="fav" data-favorite="${p.id}" aria-pressed="${favorites.has(p.id)}" aria-label="${favorites.has(p.id)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.has(p.id)?'dos':'aos'} favoritos">${favorites.has(p.id)?'★':'☆'}</button></td></tr>`;
     }).join('');
     $('#empty').hidden = list.length > 0;
     $('.table-wrap').hidden = list.length === 0;
@@ -115,7 +125,7 @@
   function renderProfile(p) {
     const issues = data.issues.filter(i => i.player === p.name);
     const fields = [['Pontos',p.points],['Jogos',p.played],['Aproveitamento',formatPercentage(p)],['Vitórias',p.wins],['Empates',p.draws],['Derrotas',p.losses],['Gols marcados',p.goalsFor],['Gols sofridos',p.goalsAgainst],['Saldo de gols',signed(p.goalDifference)]];
-    $('#player-content').innerHTML = `<h2 id="player-title">${escape(p.name)}</h2><p class="player-subtitle">${p.position}º na classificação · ${p.played ? `${p.played} jogos registrados` : 'Ainda sem jogos registrados'}</p><div class="player-stats">${fields.map(([name,value]) => `<div class="player-stat"><strong>${escape(value)}</strong><span>${name}</span></div>`).join('')}</div>${issues.length?`<div class="profile-warning"><strong>Valores a conferir</strong>${issues.map(i => `<p>${escape(i.message)}</p>`).join('')}</div>`:''}<p class="player-subtitle">${p.history.length ? `${p.history.length} posições registradas no histórico.` : 'Ainda não há resultados com data para exibir a evolução.'}</p><div class="dialog-actions"><button class="primary" id="profile-favorite" aria-pressed="${favorites.has(p.name)}">${favorites.has(p.name)?'★ Remover favorito':'☆ Adicionar favorito'}</button><button class="secondary" id="profile-games">Ver jogos</button><button class="secondary" id="profile-history">Ver evolução</button></div>`;
+    $('#player-content').innerHTML = `<h2 id="player-title">${escape(p.name)}</h2><p class="player-subtitle">${p.position}º na classificação · ${p.played ? `${p.played} jogos registrados` : 'Ainda sem jogos registrados'}</p><div class="player-stats">${fields.map(([name,value]) => `<div class="player-stat"><strong>${escape(value)}</strong><span>${name}</span></div>`).join('')}</div>${issues.length?`<div class="profile-warning"><strong>Valores a conferir</strong>${issues.map(i => `<p>${escape(i.message)}</p>`).join('')}</div>`:''}<p class="player-subtitle">${p.history.length ? `${p.history.length} posições registradas no histórico.` : 'Ainda não há resultados com data para exibir a evolução.'}</p><div class="dialog-actions"><button class="primary" id="profile-favorite" aria-pressed="${favorites.has(p.id)}">${favorites.has(p.id)?'★ Remover favorito':'☆ Adicionar favorito'}</button><button class="secondary" id="profile-games">Ver jogos</button><button class="secondary" id="profile-history">Ver evolução</button></div>`;
     $('#profile-favorite').addEventListener('click', () => { toggleFavorite(p); $('#profile-favorite').focus(); });
     $('#profile-games').addEventListener('click', () => { $('#game-player').value=p.name; $('#game-round').value=''; $('#game-status').value=''; gamePage=1; renderGames(); $('#player-dialog').close(); location.hash='jogos'; });
     $('#profile-history').addEventListener('click', () => { $('#history-player').value = p.id; renderHistory(); $('#player-dialog').close(); location.hash = 'evolucao'; });

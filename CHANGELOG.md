@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.33 — 28/09/2026
+
+- Datas de resultados validadas pelo calendário, incluindo anos bissextos.
+- Avisos enviados por fila e tarefa CLI, com limite de cinco tentativas, espera progressiva e proteção contra execuções simultâneas. Requer configurar a tarefa agendada na hospedagem.
+- Favoritos passam a usar o identificador do jogador; nomes antigos são convertidos quando ainda correspondem ao cadastro.
+
 ## 1.32 — 28/09/2026
 
 - Publicação do código com licença MIT, README, configuração de exemplo e demonstração fictícia.

@@ -32,6 +32,16 @@ function initialiseNotifications(): void
         } catch (Throwable $e) { db()->exec('ROLLBACK'); throw $e; }
     }
 
+    $columns = array_column(db()->query('PRAGMA table_info(email_notifications)')->fetchAll(), 'name');
+    if (!in_array('next_attempt_at', $columns, true)) {
+        db()->exec('BEGIN IMMEDIATE');
+        try {
+            $columns = array_column(db()->query('PRAGMA table_info(email_notifications)')->fetchAll(), 'name');
+            if (!in_array('next_attempt_at', $columns, true)) db()->exec('ALTER TABLE email_notifications ADD COLUMN next_attempt_at TEXT NULL');
+            db()->exec('COMMIT');
+        } catch (Throwable $e) { db()->exec('ROLLBACK'); throw $e; }
+    }
+
 }
 
 function queuePlayerNotification(string $eventId, string $action, string $source, array $after = [], string $target = ''): void
@@ -49,7 +59,6 @@ function queuePlayerNotification(string $eventId, string $action, string $source
                 $email = strtolower(trim((string) $email));
                 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
                 db()->prepare("INSERT OR IGNORE INTO email_notifications(event_id,recipient,audience) VALUES (?,?,'player')")->execute([$eventId,$email]);
-                $GLOBALS['copaNotificationEvents'][] = $eventId;
             }
         }
     }
@@ -57,7 +66,6 @@ function queuePlayerNotification(string $eventId, string $action, string $source
     $organizerEmail = organizerNotificationEmail();
     if (!filter_var($organizerEmail, FILTER_VALIDATE_EMAIL)) return;
     db()->prepare("INSERT INTO email_notifications(event_id, recipient) VALUES (?, ?) ON CONFLICT(event_id,recipient) DO UPDATE SET audience='organizer'")->execute([$eventId, $organizerEmail]);
-    $GLOBALS['copaNotificationEvents'][] = $eventId;
 }
 
 function notificationText(array $event): string
@@ -79,34 +87,44 @@ function notificationText(array $event): string
     return $text . "\nConsulte o painel e a auditoria para mais detalhes.\nReferência: " . $event['event_id'];
 }
 
-function sendPlayerNotification(string $id): void
+// Workers run only through CLI. Web requests only write the transactional queue.
+function sendPlayerNotification(string $id, ?string $onlyRecipient = null): void
 {
-    // Após o commit: falhas de SMTP nunca desfazem nem invalidam o salvamento.
-    if (db()->inTransaction()) return;
-    $query = db()->prepare("SELECT recipient FROM email_notifications WHERE event_id=? AND status='pending'");
-    $query->execute([$id]);
+    if (PHP_SAPI !== 'cli' || db()->inTransaction()) return;
+    $now = gmdate('c');
+    $query = db()->prepare("SELECT recipient FROM email_notifications WHERE event_id=? AND status IN ('pending','failed') AND attempts<5 AND (next_attempt_at IS NULL OR next_attempt_at<=?)" . ($onlyRecipient !== null ? ' AND recipient=?' : ''));
+    $query->execute($onlyRecipient !== null ? [$id,$now,$onlyRecipient] : [$id,$now]);
     foreach ($query->fetchAll(PDO::FETCH_COLUMN) as $recipient) {
         try {
-            $claim = db()->prepare("UPDATE email_notifications SET status='sending', attempts=attempts+1, attempted_at=? WHERE event_id=? AND recipient=? AND status='pending'");
-            $claim->execute([gmdate('c'), $id, $recipient]);
+            $claim = db()->prepare("UPDATE email_notifications SET status='sending', attempts=attempts+1, attempted_at=? WHERE event_id=? AND recipient=? AND status IN ('pending','failed') AND attempts<5 AND (next_attempt_at IS NULL OR next_attempt_at<=?)");
+            $claim->execute([$now, $id, $recipient, $now]);
             if ($claim->rowCount() !== 1) continue;
-            $query = db()->prepare('SELECT a.*, n.recipient, n.audience FROM audit_log a JOIN email_notifications n ON n.event_id=a.event_id WHERE a.event_id=? AND n.recipient=?');
+            $query = db()->prepare('SELECT a.*, n.recipient, n.audience, n.attempts FROM audit_log a JOIN email_notifications n ON n.event_id=a.event_id WHERE a.event_id=? AND n.recipient=?');
             $query->execute([$id, $recipient]); $event = $query->fetch();
             if (!function_exists('smtpSend')) require_once __DIR__ . '/mailer.php';
             smtpSend($recipient, '[Copa Lago de Pedra] ' . $event['action'], $event['audience'] === 'player' ? matchNotificationText($event) : notificationText($event));
-            db()->prepare("UPDATE email_notifications SET status='sent', sent_at=? WHERE event_id=? AND recipient=?")->execute([gmdate('c'), $id, $recipient]);
+            db()->prepare("UPDATE email_notifications SET status='sent', sent_at=?, next_attempt_at=NULL WHERE event_id=? AND recipient=?")->execute([gmdate('c'), $id, $recipient]);
         } catch (Throwable $exception) {
-            try { db()->prepare("UPDATE email_notifications SET status='failed' WHERE event_id=? AND recipient=? AND status='sending'")->execute([$id, $recipient]); }
-            catch (Throwable $ignored) { error_log('Copa: falha ao atualizar notificacao.'); }
+            try {
+                $query = db()->prepare('SELECT attempts FROM email_notifications WHERE event_id=? AND recipient=?');
+                $query->execute([$id,$recipient]); $attempts = (int) $query->fetchColumn();
+                $delays = [1=>60, 2=>300, 3=>900, 4=>3600];
+                $next = $attempts < 5 ? gmdate('c', time() + ($delays[$attempts] ?? 60)) : null;
+                db()->prepare("UPDATE email_notifications SET status='failed', next_attempt_at=? WHERE event_id=? AND recipient=? AND status='sending'")->execute([$next,$id,$recipient]);
+            } catch (Throwable $ignored) { error_log('Copa: falha ao atualizar notificacao.'); }
         }
     }
 }
 
-function dispatchPlayerNotifications(): void
+function processNotificationQueue(int $limit = 20): int
 {
-    $events = $GLOBALS['copaNotificationEvents'] ?? [];
-    $GLOBALS['copaNotificationEvents'] = [];
-    foreach (array_unique($events) as $id) sendPlayerNotification($id);
+    if (PHP_SAPI !== 'cli' || db()->inTransaction()) return 0;
+    // Only called under the CLI worker lock; a prior interrupted send may have reached SMTP.
+    db()->prepare("UPDATE email_notifications SET status='failed', next_attempt_at=? WHERE status='sending' AND attempted_at<?")->execute([gmdate('c'),gmdate('c',time()-1800)]);
+    $query = db()->prepare("SELECT event_id,recipient FROM email_notifications WHERE status IN ('pending','failed') AND attempts<5 AND (next_attempt_at IS NULL OR next_attempt_at<=?) ORDER BY COALESCE(next_attempt_at,''), rowid LIMIT " . max(1,min(100,$limit)));
+    $query->execute([gmdate('c')]); $batch = $query->fetchAll();
+    foreach ($batch as $item) sendPlayerNotification($item['event_id'], $item['recipient']);
+    return count($batch);
 }
 
 function matchNotificationText(array $event): string

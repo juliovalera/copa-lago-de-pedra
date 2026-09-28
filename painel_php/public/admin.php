@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $date = (string) ($_POST['played_at'] ?? '');
     $a = $_POST['score_a'] === '' ? null : filter_var($_POST['score_a'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
     $b = $_POST['score_b'] === '' ? null : filter_var($_POST['score_b'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
-    if (!$id || !gameIsAccessible($id, $limitedPlayerId) || $a === false || $b === false || (($a === null) !== ($b === null)) || ($a !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date))) {
+    if (!$id || !gameIsAccessible($id, $limitedPlayerId) || $a === false || $b === false || (($a === null) !== ($b === null)) || ($a !== null && !validGameDate($date))) {
         redirect('Informe os dois gols e uma data válida, ou deixe os dois gols vazios para remover o resultado.');
     }
     savePanelResult($id, $a, $b, $date);

@@ -37,7 +37,7 @@ function auditedTransaction(callable $work): mixed
 {
     $pdo = db();
     $pdo->beginTransaction();
-    try { $result = $work(); $pdo->commit(); dispatchPlayerNotifications(); return $result; }
+    try { $result = $work(); $pdo->commit(); return $result; }
     catch (Throwable $error) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $error; }
 }
 
@@ -46,8 +46,15 @@ function auditGame(array $game): array
     return ['jogador_a'=>$game['a'], 'jogador_b'=>$game['b'], 'placar_a'=>$game['score_a'], 'placar_b'=>$game['score_b'], 'data'=>$game['played_at']];
 }
 
+function validGameDate(string $date): bool
+{
+    return preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/D', $date, $parts) === 1
+        && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
+}
+
 function savePanelResult(int $id, ?int $a, ?int $b, string $date): void
 {
+    if ($a !== null && !validGameDate($date)) throw new InvalidArgumentException('Informe uma data existente no calendário.');
     auditedTransaction(static function () use ($id, $a, $b, $date): void {
         $before = gameById($id);
         if (!$before) throw new RuntimeException('Jogo não encontrado.');
