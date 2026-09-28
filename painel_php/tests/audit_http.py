@@ -51,12 +51,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.34' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.35' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.34' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.35' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.34' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.35' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -66,7 +66,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.34 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.35 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -205,7 +205,21 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         status,notice_form,_=get(admin,'auditoria.php',{'csrf':csrf(notice_form),'notification':notice[0]})
         assert db.execute('SELECT status,attempts FROM email_notifications WHERE event_id=?',(notice[0],)).fetchone()==('sent',notice[1]+1)
         print('OK: falha de e-mail visivel e reenvio restrito ao acesso principal')
-        db.execute('DROP TRIGGER fail_privilege_log')
+        db.execute('DROP TRIGGER fail_privilege_log');db.commit()
+        status,details_form,_=get(admin,'usuarios.php')
+        params={'csrf':csrf(details_form),'action':'details','user_id':1,'name':'Gestor Atualizado','email':'gestor.novo@example.invalid','previous_name':'Gestor','previous_email':'Gestor@example.invalid'}
+        assert get(normal_admin,'usuarios.php',params)[0]==403
+        assert get(athlete,'usuarios.php',params)[0]==403
+        assert get(admin,'usuarios.php',dict(params,csrf='invalid'))[0]==400
+        details_status,details_reply,_=get(admin,'usuarios.php',params)
+        assert details_status==200
+        assert db.execute('SELECT name,email FROM users WHERE id=1').fetchone()==('Gestor Atualizado','gestor.novo@example.invalid'), re.findall(r'<p class="flash"[^>]*>(.*?)</p>',details_reply)
+        event=db.execute("SELECT event_id FROM audit_log WHERE action='Dados de usuário alterados' ORDER BY rowid DESC LIMIT 1").fetchone()[0]
+        assert set(db.execute('SELECT recipient,status FROM email_notifications WHERE event_id=?',(event,)).fetchall())=={('gestor@example.invalid','sent'),('gestor.novo@example.invalid','sent')}
+        password_notice=db.execute("SELECT COUNT(*) FROM email_notifications n JOIN audit_log a ON a.event_id=n.event_id WHERE a.action='Senha definida e conta ativada' AND n.audience='account' AND n.recipient='teste@example.invalid' AND n.status='sent'").fetchone()[0]
+        assert password_notice>=1
+        print('OK: edicao HTTP restrita ao principal, CSRF e avisos de nome/email/senha')
+
         revoke_tokens=['cancelar-convite-a','cancelar-convite-b']
         for token in revoke_tokens:
             db.execute("INSERT INTO user_invites(user_id,token_hash,expires_at,created_at) VALUES (3,?,'2099-01-01T00:00:00+00:00','2026-09-27T00:00:00+00:00')",(hashlib.sha256(token.encode()).hexdigest(),))
@@ -244,7 +258,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         for attempt in range(4):
             status,body,_=get(client(),'admin.php',{'login':'gestor','password':'senha-errada-secreta'})
             assert status==200 and 'Login, e-mail ou senha inválidos' in body
-        status,body,_=get(client(),'sumula-login.php',{'login':'Gestor@example.invalid','password':'senha-errada-secreta','game_id':10})
+        status,body,_=get(client(),'sumula-login.php',{'login':'gestor.novo@example.invalid','password':'senha-errada-secreta','game_id':10})
         assert status==429 and 'Aguarde 15' in body
         assert get(client(),'admin.php',{'login':'Gestor','password':'test-only'})[0]==429
         assert get(guest,'index.php')[0]==200

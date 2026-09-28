@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.35 — 28/09/2026
+
+- Avisos ao titular ao corrigir nome de conta ou botonista e ao definir/redefinir senha, sem divulgar senhas ou tokens.
+- Edição de nome e e-mail de contas pelo administrador máximo; troca de e-mail avisa ambos os endereços e cancela convites antigos.
+- Envios após salvar, com falhas registradas para reenvio manual.
+
 ## 1.34 — 28/09/2026
 
 - Removida a exigência de tarefa agendada: avisos voltam a ser enviados após salvar, com reenvio manual na Auditoria.

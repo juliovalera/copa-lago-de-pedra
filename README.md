@@ -128,6 +128,10 @@ Os avisos aos jogadores usam o e-mail da conta vinculada a cada participante. Re
 
 **Atualização de instalações anteriores:** configure `notification_email` no `config.php` ou `COPA_NOTIFY_EMAIL` para manter as cópias ao organizador. O endereço deixou de ficar fixo no código. Sem esse valor, apenas as cópias ao organizador ficam desativadas.
 
+### Avisos de alteração de cadastro
+
+O titular recebe aviso ao alterar nome, e-mail ou definir/redefinir senha pelo convite. O administrador máximo edita nome e e-mail em **Usuários**. A troca de e-mail avisa o endereço antigo e o novo e cancela convites antigos. Correções do nome do botonista também avisam as contas vinculadas. Senhas e tokens não aparecem nos avisos.
+
 ## 🌐 Publicação
 
 1. Faça backup dos dados e da configuração da instalação existente.

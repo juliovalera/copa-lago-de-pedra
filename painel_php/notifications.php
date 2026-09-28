@@ -34,8 +34,24 @@ function initialiseNotifications(): void
 
 }
 
-function queuePlayerNotification(string $eventId, string $action, string $source, array $after = [], string $target = ''): void
+function queuePlayerNotification(string $eventId, string $action, string $source, array $after = [], string $target = '', array $before = []): void
 {
+    $accountRecipients = [];
+    if (in_array($action, ['Dados de usuário alterados','Senha definida e conta ativada'], true) && preg_match('/^Usuário ([0-9]+)$/u', $target, $match)) {
+        $query=db()->prepare('SELECT email FROM users WHERE id=?');
+        $query->execute([(int)$match[1]]);
+        $accountRecipients=$query->fetchAll(PDO::FETCH_COLUMN);
+        if ($action==='Dados de usuário alterados' && isset($before['email'])) $accountRecipients[]=$before['email'];
+    } elseif ($action==='Nome de botonista corrigido' && preg_match('/^Botonista ([0-9]+)$/', $target, $match)) {
+        $query=db()->prepare('SELECT email FROM users WHERE player_id=?');
+        $query->execute([(int)$match[1]]); $accountRecipients=$query->fetchAll(PDO::FETCH_COLUMN);
+    }
+    foreach ($accountRecipients as $email) {
+        $email=strtolower(trim((string)$email));
+        if (!filter_var($email,FILTER_VALIDATE_EMAIL)) continue;
+        db()->prepare("INSERT OR IGNORE INTO email_notifications(event_id,recipient,audience) VALUES (?,?,'account')")->execute([$eventId,$email]);
+        $GLOBALS['copaNotificationEvents'][]=$eventId;
+    }
     $actions = ['Resultado salvo', 'Resultado removido', 'Nome de botonista corrigido', 'Súmula gerada', 'Súmula reemitida', 'Senha definida e conta ativada'];
     if (!in_array($action, $actions, true)) return;
     $user = currentUser();
@@ -56,7 +72,7 @@ function queuePlayerNotification(string $eventId, string $action, string $source
     if ($source !== 'QR Code' && !$playerInvite && (!$user || $user['player_id'] === null)) return;
     $organizerEmail = organizerNotificationEmail();
     if (!filter_var($organizerEmail, FILTER_VALIDATE_EMAIL)) return;
-    db()->prepare("INSERT INTO email_notifications(event_id, recipient) VALUES (?, ?) ON CONFLICT(event_id,recipient) DO UPDATE SET audience='organizer'")->execute([$eventId, $organizerEmail]);
+    db()->prepare("INSERT INTO email_notifications(event_id, recipient) VALUES (?, ?) ON CONFLICT(event_id,recipient) DO UPDATE SET audience=CASE WHEN audience='account' THEN 'account' ELSE 'organizer' END")->execute([$eventId, $organizerEmail]);
     $GLOBALS['copaNotificationEvents'][] = $eventId;
 }
 
@@ -93,7 +109,7 @@ function sendPlayerNotification(string $id): void
             $query = db()->prepare('SELECT a.*, n.recipient, n.audience FROM audit_log a JOIN email_notifications n ON n.event_id=a.event_id WHERE a.event_id=? AND n.recipient=?');
             $query->execute([$id, $recipient]); $event = $query->fetch();
             if (!function_exists('smtpSend')) require_once __DIR__ . '/mailer.php';
-            smtpSend($recipient, '[Copa Lago de Pedra] ' . $event['action'], $event['audience'] === 'player' ? matchNotificationText($event) : notificationText($event));
+            smtpSend($recipient, '[Copa Lago de Pedra] ' . $event['action'], match ($event['audience']) { 'account' => accountNotificationText($event), 'player' => matchNotificationText($event), default => notificationText($event) });
             db()->prepare("UPDATE email_notifications SET status='sent', sent_at=? WHERE event_id=? AND recipient=?")->execute([gmdate('c'), $id, $recipient]);
         } catch (Throwable $exception) {
             try { db()->prepare("UPDATE email_notifications SET status='failed' WHERE event_id=? AND recipient=? AND status='sending'")->execute([$id, $recipient]); }
@@ -121,4 +137,21 @@ function matchNotificationText(array $event): string
     $text .= 'Agora: ' . $score($after) . ' | Data: ' . $date($after) . "\n";
     $text .= "\nConsulte os jogos e a classificação: " . rtrim((string) (config()['base_url'] ?? ''), '/') . '/index.php#jogos';
     return $text;
+}
+
+function accountNotificationText(array $event): string
+{
+    $before=json_decode($event['before_json'],true) ?: [];
+    $after=json_decode($event['after_json'],true) ?: [];
+    $text="Olá! Houve uma atualização no seu cadastro da Copa Lago de Pedra.\n\n";
+    if ($event['action']==='Senha definida e conta ativada') {
+        $text.="Sua senha foi definida ou redefinida com sucesso. Por segurança, a senha não é enviada por e-mail.\n";
+    } else {
+        foreach (['nome'=>'Nome','email'=>'E-mail'] as $key=>$label) {
+            if (isset($after[$key]) && ($before[$key] ?? null)!==$after[$key]) $text.=$label . ' anterior: ' . ($before[$key] ?? 'Não informado') . "\n" . $label . ' atualizado: ' . $after[$key] . "\n";
+        }
+    }
+    $text.="\nData e hora: " . date('d/m/Y H:i:s',strtotime($event['occurred_at'])) . ' (' . config()['timezone'] . ").\n";
+    $text.="Se você não reconhece esta alteração, entre em contato com a organização da copa.\n";
+    return $text . "\nAcesse o sistema: " . rtrim((string)(config()['base_url'] ?? ''),'/') . '/admin.php';
 }

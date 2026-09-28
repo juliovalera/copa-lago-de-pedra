@@ -30,7 +30,7 @@ function auditRecord(string $action, string $target, array $before = [], array $
         $eventId, gmdate('Y-m-d\TH:i:s\Z'), $actor ?? auditActor(),
         $action, $source, $target, $encode($before), $encode($after)
     ]);
-    queuePlayerNotification($eventId, $action, $source, $after, $target);
+    queuePlayerNotification($eventId, $action, $source, $after, $target, $before);
 }
 
 function auditedTransaction(callable $work): mixed
@@ -85,6 +85,30 @@ function changeUserPrivilege(int $id, string $role, ?int $playerId, string $expe
         auditRecord('Privilégios alterados', 'Usuário ' . $id,
             ['nome'=>$before['name'], 'jogador_id'=>$before['player_id'], 'nivel'=>$before['player_id'] === null ? 'Administrador' : 'Botonista'],
             ['nome'=>$before['name'], 'jogador_id'=>$playerId, 'nivel'=>$playerId === null ? 'Administrador' : 'Botonista']);
+    });
+}
+
+function updateUserDetails(int $id, string $name, string $email, string $expectedName, string $expectedEmail): void
+{
+    if (!isMasterAdmin()) throw new RuntimeException('Somente o administrador máximo pode editar os dados da conta.');
+    $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
+    $email = strtolower(trim($email));
+    $length = preg_match_all('/./u', $name);
+    if ($name === '' || $length === false || $length > 100 || preg_match('/\p{C}/u', $name) || strlen($email)>160 || !filter_var($email,FILTER_VALIDATE_EMAIL)) {
+        throw new InvalidArgumentException('Informe um nome com até 100 caracteres e um e-mail válido.');
+    }
+    auditedTransaction(static function () use ($id,$name,$email,$expectedName,$expectedEmail): void {
+        $query = db()->prepare('SELECT name,email FROM users WHERE id=?');
+        $query->execute([$id]); $before=$query->fetch();
+        if (!$before) throw new InvalidArgumentException('Usuário não encontrado.');
+        if ($before['name']!==$expectedName || $before['email']!==$expectedEmail) throw new InvalidArgumentException('Os dados foram alterados. Recarregue a página e confira antes de salvar.');
+        if ($before['name']===$name && $before['email']===$email) return;
+        $query=db()->prepare('SELECT 1 FROM users WHERE email=? COLLATE NOCASE AND id<>?');
+        $query->execute([$email,$id]);
+        if ($query->fetchColumn()) throw new InvalidArgumentException('Este e-mail já está em uso por outra conta.');
+        db()->prepare('UPDATE users SET name=?,email=? WHERE id=?')->execute([$name,$email,$id]);
+        if ($before['email']!==$email) db()->prepare('UPDATE user_invites SET used_at=? WHERE user_id=? AND used_at IS NULL')->execute([date('c'),$id]);
+        auditRecord('Dados de usuário alterados', 'Usuário ' . $id, ['nome'=>$before['name'],'email'=>$before['email']], ['nome'=>$name,'email'=>$email]);
     });
 }
 
