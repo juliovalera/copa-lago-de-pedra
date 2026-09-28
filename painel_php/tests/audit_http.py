@@ -53,12 +53,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.36' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.37' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.36' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.37' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.36' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.37' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.36 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.37 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -285,6 +285,11 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert status==200
         status,sheet,_=get(admin,'sumula.php?game=650',{'csrf':csrf(form),'match_date':date.today().isoformat()})
         assert status==200 and 'id="sumula-qr"' in sheet and 'api.qrserver.com' not in sheet
+        notice_id=db.execute("SELECT event_id FROM audit_log WHERE action='Súmula gerada' AND target='Jogo 650' ORDER BY rowid DESC LIMIT 1").fetchone()[0]
+        expected_emails={row[0].lower() for row in db.execute('SELECT email FROM users WHERE player_id IN (1,2)')}
+        delivered={row[0] for row in db.execute("SELECT recipient FROM email_notifications WHERE event_id=? AND status='sent'",(notice_id,))}
+        assert expected_emails and expected_emails.issubset(delivered)
+
         assert 'vendor/qrcode-generator/qrcode.js' in sheet and 'id="print-sumula" disabled' in sheet
         assert get(guest,'vendor/qrcode-generator/qrcode.js')[0]==200
         fixture=sheet.replace('href="sumula.css?', 'href="../painel_php/public/sumula.css?').replace('src="vendor/', 'src="../painel_php/public/vendor/').replace('src="sumula-qr.js?', 'src="../painel_php/public/sumula-qr.js?')

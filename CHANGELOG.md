@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.37 — 28/09/2026
+
+- Geração e reemissão de súmula passam a avisar os dois jogadores com e-mail válido na conta vinculada.
+- Aviso inclui confronto e data, sem divulgar o token do QR; cópias existentes ao organizador preservadas.
+
 ## 1.36 — 28/09/2026
 
 - QR da súmula gerado localmente em SVG, sem enviar o link de registro a terceiros.

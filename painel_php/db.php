@@ -179,7 +179,7 @@ function dailyRefereeLink(int $gameId, ?string $matchDate = null): array
     $existing->execute([$gameId, $today]);
     $link = $existing->fetch();
     if ($link) {
-        auditRecord('Súmula reemitida', 'Jogo ' . $gameId, [], ['data'=>$matchDate, 'link_id'=>$link['id'], 'gerado_por'=>$link['created_by']]);
+        auditRecord('Súmula reemitida', 'Jogo ' . $gameId, [], ['jogador_a'=>$game['a'], 'jogador_b'=>$game['b'], 'data'=>$matchDate, 'link_id'=>$link['id'], 'gerado_por'=>$link['created_by']]);
         return $link;
     }
     $token = bin2hex(random_bytes(24));
@@ -187,7 +187,7 @@ function dailyRefereeLink(int $gameId, ?string $matchDate = null): array
     $creator = auditActor();
     $insert->execute([$gameId, $token, $today, $creator]);
     $linkId = (int) $pdo->lastInsertId();
-    auditRecord('Súmula gerada', 'Jogo ' . $gameId, [], ['data'=>$matchDate, 'link_id'=>$linkId, 'gerado_por'=>$creator]);
+    auditRecord('Súmula gerada', 'Jogo ' . $gameId, [], ['jogador_a'=>$game['a'], 'jogador_b'=>$game['b'], 'data'=>$matchDate, 'link_id'=>$linkId, 'gerado_por'=>$creator]);
     return ['game_id' => $gameId, 'token' => $token, 'generated_on' => $today, 'used_at' => null];
     });
 }

@@ -56,7 +56,7 @@ function queuePlayerNotification(string $eventId, string $action, string $source
     if (!in_array($action, $actions, true)) return;
     $user = currentUser();
     $playerInvite = $source === 'Convite' && isset($after['jogador_id']);
-    if (in_array($action, ['Resultado salvo', 'Resultado removido'], true) && preg_match('/^Jogo ([0-9]+)$/', $target, $match)) {
+    if (in_array($action, ['Resultado salvo', 'Resultado removido', 'Súmula gerada', 'Súmula reemitida'], true) && preg_match('/^Jogo ([0-9]+)$/', $target, $match)) {
         $game = gameById((int) $match[1]);
         if ($game) {
             $query = db()->prepare('SELECT email FROM users WHERE player_id IN (?, ?)');
@@ -131,6 +131,14 @@ function matchNotificationText(array $event): string
     $after = json_decode($event['after_json'], true) ?: [];
     $score = static fn(array $d): string => isset($d['placar_a'], $d['placar_b']) ? $d['placar_a'] . ' x ' . $d['placar_b'] : 'Sem resultado';
     $date = static fn(array $d): string => !empty($d['data']) ? date('d/m/Y', strtotime($d['data'])) : 'Não informada';
+    if (in_array($event['action'], ['Súmula gerada','Súmula reemitida'], true)) {
+        $operation = $event['action']==='Súmula reemitida' ? 'reemitida' : 'gerada';
+        return "Olá! A súmula da sua partida foi {$operation}.\n\n"
+            . ($after['jogador_a'] ?? '') . ' x ' . ($after['jogador_b'] ?? '')
+            . "\nData da partida: " . $date($after)
+            . "\n\nEste aviso não significa que um resultado foi registrado.\n"
+            . "Consulte os jogos: " . rtrim((string)(config()['base_url'] ?? ''),'/') . '/index.php#jogos';
+    }
     $text = "Olá! Houve uma atualização no resultado da sua partida na Copa Lago de Pedra.\n\n";
     $text .= ($after['jogador_a'] ?? $before['jogador_a'] ?? '') . ' x ' . ($after['jogador_b'] ?? $before['jogador_b'] ?? '') . "\n";
     if (isset($before['placar_a'], $before['placar_b'])) $text .= 'Antes: ' . $score($before) . ' | Data: ' . $date($before) . "\n";
