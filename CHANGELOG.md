@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.36 — 28/09/2026
+
+- QR da súmula gerado localmente em SVG, sem enviar o link de registro a terceiros.
+- Biblioteca MIT incluída no pacote, com revisão fixada e licença preservada; sem Composer, CDN ou instalações adicionais.
+- Margem branca e impressão liberada somente após gerar o QR; mantidas as regras de permissão, data e uso único.
+
 ## 1.35 — 28/09/2026
 
 - Avisos ao titular ao corrigir nome de conta ou botonista e ao definir/redefinir senha, sem divulgar senhas ou tokens.

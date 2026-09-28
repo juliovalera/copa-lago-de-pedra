@@ -49,7 +49,8 @@ if (!$link): ?>
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $base = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
 $refereeUrl = $base . rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/') . '/arbitro.php?t=' . rawurlencode($link['token']);
-$qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&format=svg&data=' . rawurlencode($refereeUrl);
+header('Cache-Control: no-store');
+header('Referrer-Policy: no-referrer');
 ?>
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Súmula · Rodada <?= h($game['round_number']) ?> · I Copa Lago de Pedra</title><link rel="stylesheet" href="sumula.css?v=<?= filemtime(__DIR__ . '/sumula.css') ?>"></head>
@@ -60,4 +61,4 @@ $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&format=svg&da
 <table class="record"><thead><tr><th>REGISTRO DO JOGO</th><th>JOGADOR A</th><th>JOGADOR B</th></tr></thead><tbody><tr><th>1º TEMPO - GOLS</th><td></td><td></td></tr><tr><th>2º TEMPO - GOLS</th><td></td><td></td></tr><tr><th>PLACAR FINAL</th><td></td><td></td></tr></tbody></table>
 <section class="notes"><h3>OCORRÊNCIAS / ADVERTÊNCIAS / OBSERVAÇÕES</h3><div></div><div></div><div></div></section>
 <footer class="signatures"><div><b>ASSINATURA - JOGADOR A</b></div><div><b>ASSINATURA - ÁRBITRO</b></div><div><b>ASSINATURA - JOGADOR B</b></div></footer>
-<aside class="qr"><img src="<?= h($qrUrl) ?>" alt="QR Code para o árbitro registrar o resultado"><b>REGISTRAR RESULTADO</b><small>Válido somente em <?= h(date('d/m/Y', strtotime($link['generated_on']))) ?></small></aside><p class="link-note">Link do árbitro: <?= h($refereeUrl) ?></p></main><div class="print-actions"><a href="sumula.php?game=<?= h($game['id']) ?>">Alterar data</a><button onclick="window.print()">Imprimir súmula</button><a href="admin.php">Voltar ao painel</a></div></body></html>
+<aside class="qr"><div id="sumula-qr" data-url="<?= h($refereeUrl) ?>" role="img" aria-label="QR Code para o árbitro registrar o resultado"></div><b>REGISTRAR RESULTADO</b><small>Válido somente em <?= h(date('d/m/Y', strtotime($link['generated_on']))) ?></small></aside><p class="link-note">Link do árbitro: <?= h($refereeUrl) ?></p></main><div class="print-actions"><a href="sumula.php?game=<?= h($game['id']) ?>">Alterar data</a><button id="print-sumula" disabled>Imprimir súmula</button><a href="admin.php">Voltar ao painel</a></div><p id="sumula-qr-status" class="qr-status" role="status">Preparando QR Code. Se esta mensagem continuar, verifique se o JavaScript está habilitado e recarregue a página.</p><script src="vendor/qrcode-generator/qrcode.js?v=<?= filemtime(__DIR__.'/vendor/qrcode-generator/qrcode.js') ?>" defer></script><script src="sumula-qr.js?v=<?= filemtime(__DIR__.'/sumula-qr.js') ?>" defer></script></body></html>

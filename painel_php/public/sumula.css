@@ -6,3 +6,5 @@
 .info-grid strong.venue-blank{display:block;width:100%;height:5mm;border-bottom:1px solid #123553}
 .signatures b{font-size:11px;line-height:1.25;font-weight:700;color:#123553}
 .team b,.score b,.record th{font-size:11px;line-height:1.25;font-weight:700;color:#123553}
+
+#sumula-qr{width:30mm;height:30mm;background:#fff;margin:auto}#sumula-qr svg{display:block;width:100%;height:100%;shape-rendering:crispEdges}.qr{width:32mm;bottom:6mm}.qr-status{max-width:196mm;margin:12px auto;padding:12px;background:#fff;color:#123553;text-align:center}.qr-status[hidden]{display:none}.print-actions button:disabled{opacity:.5;cursor:wait}@media print{.qr-status{color:#000}}

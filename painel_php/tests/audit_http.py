@@ -1,6 +1,7 @@
 """Testa rotas reais numa cópia temporária, sem banco real nem envio de e-mail."""
 from pathlib import Path
 import http.cookiejar
+from datetime import date
 import hashlib
 import re
 import shutil
@@ -26,6 +27,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         shutil.copyfile(ROOT/'painel_php'/name, app/name)
     for path in (ROOT/'painel_php/public').glob('*'):
         if path.is_file(): shutil.copyfile(path, app/'public'/path.name)
+        elif path.is_dir(): shutil.copytree(path, app/'public'/path.name)
     (app/'config.php').write_text("<?php return ['database'=>__DIR__.'/test.sqlite','timezone'=>'America/Sao_Paulo','admin_password'=>'test-only','notification_email'=>'organizer@example.invalid','base_url'=>'http://example.invalid','backup_directory'=>__DIR__.'/backups'];", encoding='utf-8')
     (app/'mailer.php').write_text("<?php function smtpSend(...$args): void {}", encoding='utf-8')
     (root/'seed.php').write_text("""<?php
@@ -51,12 +53,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.35' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.36' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.35' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.36' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.35' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.36' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -66,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.35 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.36 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -279,6 +281,18 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert get(admin,'usuarios.php')[0]==200
         assert get(client(),'sumula-login.php',{'login':'Gestor','password':'test-only','game_id':10})[0]==200
         print('OK: bloqueio HTTP compartilhado, acesso principal protegido, consulta pública e sessões mantidas, logs restritos')
+        status,form,_=get(admin,'sumula.php?game=650')
+        assert status==200
+        status,sheet,_=get(admin,'sumula.php?game=650',{'csrf':csrf(form),'match_date':date.today().isoformat()})
+        assert status==200 and 'id="sumula-qr"' in sheet and 'api.qrserver.com' not in sheet
+        assert 'vendor/qrcode-generator/qrcode.js' in sheet and 'id="print-sumula" disabled' in sheet
+        assert get(guest,'vendor/qrcode-generator/qrcode.js')[0]==200
+        fixture=sheet.replace('href="sumula.css?', 'href="../painel_php/public/sumula.css?').replace('src="vendor/', 'src="../painel_php/public/vendor/').replace('src="sumula-qr.js?', 'src="../painel_php/public/sumula-qr.js?')
+        fixture=fixture.replace('src="asset.php?file=', 'src="../site/')
+        (ROOT/'previews/sumula-local.html').write_text(fixture,encoding='utf-8')
+        assert get(admin,'sumula.php?game=1')[0]==409
+        print('OK: sumula com QR local, recursos locais e bloqueio para jogo concluido')
+
         db.close()
     finally:
         if 'db' in locals(): db.close()

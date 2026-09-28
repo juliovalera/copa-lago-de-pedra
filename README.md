@@ -192,7 +192,7 @@ Ele monta uma aplicação temporária e gera prévias fictícias em `previews/`,
 
 - `.gitignore` usa uma lista de inclusão para impedir publicação acidental de bancos, configurações, planilhas, resultados, ZIPs e prévias.
 - Execute `python scripts/check_publication.py` depois de preparar os arquivos com `git add`. A verificação ajuda, mas não substitui a revisão do conteúdo.
-- O QR da súmula usa um serviço externo de geração de imagem. O link de registro é encaminhado a esse serviço; use a súmula apenas no contexto autorizado da competição. O portador do QR pode enviar o resultado na data escolhida e uma única vez.
+- O QR da súmula é gerado no navegador por uma biblioteca local, sem enviar o link a serviços externos. O JavaScript deve estar habilitado para gerar o QR; o botão de impressão aguarda sua geração. O portador do QR pode enviar o resultado na data escolhida e uma única vez.
 - O histórico representa os resultados atualmente registrados por data; corrigir um placar recalcula a evolução. A auditoria guarda as alterações.
 - A demonstração e a validação de restauração de backup seguem o formato de 26 participantes e 650 jogos. Adaptar para outro campeonato exige revisar essas regras e os textos.
 
@@ -203,3 +203,5 @@ Ele monta uma aplicação temporária e gera prévias fictícias em `previews/`,
 Contato público: **julio@projetos.tec.br**.
 
 Código e documentação distribuídos sob a [licença MIT](LICENSE). Preserve o aviso de autoria ao redistribuir. A licença do software não concede direitos sobre marcas e logotipos da Copa Lago de Pedra ou da Liga Mogiana; consulte seus titulares antes de reutilizá-los em outra identidade visual.
+
+A geração local de QR usa [QR Code Generator, de Kazuhiko Arase](painel_php/public/vendor/qrcode-generator/README.md), com sua licença MIT preservada.
