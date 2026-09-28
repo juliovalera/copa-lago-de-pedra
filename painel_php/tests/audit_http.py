@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
     shutil.copytree(ROOT/'site', root/'site')
     app = root/'painel_php'
     (app/'public').mkdir(parents=True)
-    for name in ('db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php', 'process-emails.php'):
+    for name in ('db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
         shutil.copyfile(ROOT/'painel_php'/name, app/name)
     for path in (ROOT/'painel_php/public').glob('*'):
         if path.is_file(): shutil.copyfile(path, app/'public'/path.name)
@@ -51,12 +51,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.33' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.34' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.33' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.34' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.33' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.34' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -66,7 +66,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.33 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.34 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -88,8 +88,8 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         for invalid_date in ['2026-02-30','2026-04-31','2026-02-29','0000-01-01']:
             status,date_form,_=get(admin,'admin.php',{'csrf':csrf(date_form),'game_id':1,'score_a':9,'score_b':9,'played_at':invalid_date})
             assert status==200 and db.execute('SELECT score_a,score_b,played_at FROM games WHERE id=1').fetchone()==original
-        assert db.execute("SELECT COUNT(*) FROM email_notifications WHERE status='sent'").fetchone()[0]==0
-        print('OK: datas impossiveis recusadas na rota HTTP; salvamento nao envia SMTP')
+        assert db.execute("SELECT COUNT(*) FROM email_notifications WHERE status='sent'").fetchone()[0]>0
+        print('OK: datas impossiveis recusadas na rota HTTP; avisos enviados apos salvar')
         actions=[row[0] for row in db.execute('SELECT action FROM audit_log')]
         assert all(a in actions for a in ['Resultado salvo','Usuário cadastrado','Convite emitido','Convite enviado','Acesso alterado'])
         status,html,_=get(admin,'auditoria.php?actor=Administrador%20principal')
@@ -199,22 +199,11 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert notice is not None
         db.execute("UPDATE email_notifications SET status='failed' WHERE event_id=?",(notice[0],));db.commit()
         status,notice_form,_=get(admin,'auditoria.php')
-        assert status==200 and 'Agendar nova tentativa' in notice_form
+        assert status==200 and 'Tentar enviar aviso novamente' in notice_form
         assert get(normal_admin,'auditoria.php',{'csrf':csrf(notice_form),'notification':notice[0]})[0]==403
         assert get(admin,'auditoria.php',{'csrf':'invalid','notification':notice[0]})[0]==400
         status,notice_form,_=get(admin,'auditoria.php',{'csrf':csrf(notice_form),'notification':notice[0]})
-        assert db.execute('SELECT status,attempts FROM email_notifications WHERE event_id=?',(notice[0],)).fetchone()==('pending',0)
-        lock_code="$f=fopen($argv[1],'c');flock($f,LOCK_EX);echo 'locked'.PHP_EOL;fflush(STDOUT);fgets(STDIN);"
-        holder=subprocess.Popen(PHP_ARGS+['-r',lock_code,str(app/'test.sqlite.emails.lock')],stdin=subprocess.PIPE,stdout=subprocess.PIPE)
-        try:
-            assert holder.stdout.readline().strip()==b'locked'
-            result=subprocess.run(PHP_ARGS+[str(app/'process-emails.php')],capture_output=True,check=True)
-            assert b'processamento' in result.stdout
-            assert db.execute('SELECT status FROM email_notifications WHERE event_id=?',(notice[0],)).fetchone()[0]=='pending'
-        finally:
-            holder.communicate(input=b'finish\n',timeout=5)
-        subprocess.run(PHP_ARGS + [str(app/'process-emails.php')],check=True,capture_output=True)
-        assert db.execute('SELECT status FROM email_notifications WHERE event_id=?',(notice[0],)).fetchone()[0]=='sent'
+        assert db.execute('SELECT status,attempts FROM email_notifications WHERE event_id=?',(notice[0],)).fetchone()==('sent',notice[1]+1)
         print('OK: falha de e-mail visivel e reenvio restrito ao acesso principal')
         db.execute('DROP TRIGGER fail_privilege_log')
         revoke_tokens=['cancelar-convite-a','cancelar-convite-b']

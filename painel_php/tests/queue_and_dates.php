@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/referee.php';
-processNotificationQueue(100);
 $GLOBALS['testEmails'] = [];
 $pdo->exec("INSERT INTO users(id,name,username,email,player_id,is_active,created_at) VALUES (1,'Demo','demo','demo@example.invalid',1,1,'2026-09-28')");
 $_SESSION = ['legacy_admin'=>true];
@@ -14,27 +13,16 @@ foreach (['2026-02-30','2026-04-31','2026-02-29','0000-01-01','2026-13-01','2026
 }
 savePanelResult(401,1,0,'2024-02-29');
 check(gameById(401)['played_at'] === '2024-02-29', 'ano bissexto aceito');
-check(count($GLOBALS['testEmails']) === 0, 'salvar apenas enfileira, sem chamar SMTP');
-check((int) $pdo->query("SELECT COUNT(*) FROM email_notifications WHERE status='pending'")->fetchColumn() === 1, 'aviso persistido após commit');
+check(count($GLOBALS['testEmails']) === 1, 'aviso enviado ao salvar, sem agendamento');
+// Compatibility with databases already upgraded to 1.33: stale retry dates do not block manual delivery.
+$pdo->exec('ALTER TABLE email_notifications ADD COLUMN next_attempt_at TEXT NULL');
 $GLOBALS['testSmtpFailure'] = true;
-processNotificationQueue();
-$row = $pdo->query("SELECT * FROM email_notifications WHERE recipient='demo@example.invalid'")->fetch();
-check($row['status']==='failed' && $row['attempts']===1 && strtotime($row['next_attempt_at'])>time(), 'falha agenda tentativa futura');
-processNotificationQueue();
-check((int) $pdo->query("SELECT attempts FROM email_notifications WHERE recipient='demo@example.invalid'")->fetchColumn()===1, 'não tenta de novo antes do prazo');
-for ($attempt=2; $attempt<=5; $attempt++) {
-    $pdo->exec("UPDATE email_notifications SET next_attempt_at='2000-01-01T00:00:00+00:00' WHERE recipient='demo@example.invalid'");
-    processNotificationQueue();
-}
-processNotificationQueue();
-check((int) $pdo->query("SELECT attempts FROM email_notifications WHERE recipient='demo@example.invalid'")->fetchColumn()===5, 'para após cinco tentativas');
-$GLOBALS['testSmtpFailure'] = false;
-$pdo->exec("UPDATE email_notifications SET status='pending',attempts=0,next_attempt_at=NULL WHERE recipient='demo@example.invalid'");
-processNotificationQueue(); processNotificationQueue();
-check(count($GLOBALS['testEmails'])===1, 'reagendamento entrega uma vez sem repetir confirmado');
 savePanelResult(401,2,0,'2024-02-29');
-$pdo->exec("UPDATE email_notifications SET status='sending', attempts=1, attempted_at='2000-01-01T00:00:00+00:00' WHERE status='pending'");
-processNotificationQueue();
-check(count($GLOBALS['testEmails'])===2, 'envio interrompido antigo é recuperado');
+check(gameById(401)['score_a']===2, 'falha SMTP preserva resultado');
+$row=$pdo->query("SELECT event_id FROM email_notifications WHERE recipient='demo@example.invalid' AND status='failed' ORDER BY rowid DESC LIMIT 1")->fetch();
+$pdo->prepare("UPDATE email_notifications SET status='pending', attempts=5,next_attempt_at='2099-01-01T00:00:00+00:00' WHERE event_id=?")->execute([$row['event_id']]);
+$GLOBALS['testSmtpFailure'] = false;
+sendPlayerNotification($row['event_id']);sendPlayerNotification($row['event_id']);
+check(count($GLOBALS['testEmails'])===2, 'reenvio manual funciona com banco 1.33 e nao duplica confirmado');
 savePanelResult(401,null,null,'');
-check(gameById(401)['played_at']===null, 'remoção limpa data sem exigir preenchimento');
+check(gameById(401)['played_at']===null, 'remocao limpa data');

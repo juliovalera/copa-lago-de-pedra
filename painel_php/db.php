@@ -233,6 +233,7 @@ function saveRefereeResult(string $token, int $scoreA, int $scoreB): void
         }
         auditRecord('Resultado salvo', 'Jogo ' . $link['game_id'], auditGame($before), auditGame(gameById((int) $link['game_id'])) + ['link_id'=>$link['referee_link_id'], 'gerado_por'=>$link['created_by'] ?? 'Não identificado (link anterior)'], 'QR Code', 'Portador do QR (identidade não verificada)');
         $pdo->commit();
+        dispatchPlayerNotifications();
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $exception;

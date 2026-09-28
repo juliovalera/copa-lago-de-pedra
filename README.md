@@ -124,7 +124,7 @@ Preencha o bloco `smtp` do arquivo privado ou use estas variáveis:
 | `COPA_SMTP_FROM_NAME` | Nome que aparece como remetente |
 | `COPA_NOTIFY_EMAIL` | Destinatário das cópias ao organizador; opcional |
 
-Os avisos aos jogadores usam o e-mail da conta vinculada a cada participante. Resultados novos, corrigidos ou removidos geram avisos; salvar sem mudança não gera outro envio. Falhas de SMTP não desfazem o resultado e podem ser tratadas na Auditoria pelo administrador máximo. Os avisos ficam em uma fila e são enviados por tarefa agendada, com até cinco tentativas automáticas. **Configure o agendamento ao instalar esta versão**, seguindo [E-mails em segundo plano](EMAILS_EM_SEGUNDO_PLANO.md). Os convites de acesso continuam sendo enviados pela tela de Usuários.
+Os avisos aos jogadores usam o e-mail da conta vinculada a cada participante. Resultados novos, corrigidos ou removidos geram avisos; salvar sem mudança não gera outro envio. Falhas de SMTP não desfazem o resultado e podem ser tratadas na Auditoria pelo administrador máximo. Os avisos são enviados logo após salvar, com o SMTP configurado, sem precisar de tarefas agendadas. Se o envio falhar, o administrador máximo pode tentar novamente pela Auditoria. A resposta pode demorar enquanto o servidor de e-mail é consultado.
 
 **Atualização de instalações anteriores:** configure `notification_email` no `config.php` ou `COPA_NOTIFY_EMAIL` para manter as cópias ao organizador. O endereço deixou de ficar fixo no código. Sem esse valor, apenas as cópias ao organizador ficam desativadas.
 

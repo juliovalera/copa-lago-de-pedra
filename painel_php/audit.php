@@ -37,7 +37,7 @@ function auditedTransaction(callable $work): mixed
 {
     $pdo = db();
     $pdo->beginTransaction();
-    try { $result = $work(); $pdo->commit(); return $result; }
+    try { $result = $work(); $pdo->commit(); dispatchPlayerNotifications(); return $result; }
     catch (Throwable $error) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $error; }
 }
 

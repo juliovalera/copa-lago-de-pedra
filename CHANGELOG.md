@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.34 — 28/09/2026
+
+- Removida a exigência de tarefa agendada: avisos voltam a ser enviados após salvar, com reenvio manual na Auditoria.
+- Processador antigo neutralizado para atualizações de instalações 1.33. Avisos pendentes preservados para reenvio.
+- Mantidas a validação de datas pelo calendário e os favoritos por identificador.
+
 ## 1.33 — 28/09/2026
 
 - Datas de resultados validadas pelo calendário, incluindo anos bissextos.
