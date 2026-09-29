@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
     require __DIR__.'/painel_php/db.php'; initialiseDatabase();
     for ($i=1;$i<=26;$i++) db()->prepare('INSERT INTO players VALUES (?,?)')->execute([$i,'Jogador '.$i]);
     for ($i=1;$i<=650;$i++) db()->prepare('INSERT INTO games(id,round_number,game_number,turn_number,player_a_id,player_b_id) VALUES (?,1,?,1,1,2)')->execute([$i,$i]);
-    foreach ([[1,'Gestor',null],[2,'Atleta',1]] as [$id,$name,$player]) db()->prepare('INSERT INTO users(id,name,username,email,password_hash,player_id,is_active,created_at) VALUES (?,?,?,?,?,?,1,?)')->execute([$id,$name,$name,$name.'@example.invalid',password_hash('test-only',PASSWORD_DEFAULT),$player,date('c')]);
+    foreach ([[1,'Gestor',null],[2,'Atleta',1]] as [$id,$name,$player]) db()->prepare('INSERT INTO users(id,name,username,email,password_hash,player_id,role,is_active,created_at) VALUES (?,?,?,?,?,?,?,1,?)')->execute([$id,$name,$name,$name.'@example.invalid',password_hash('test-only',PASSWORD_DEFAULT),$player,$player === null ? 'admin' : 'player',date('c')]);
     """, encoding='utf-8')
     subprocess.run(PHP_ARGS + [str(root/'seed.php')],check=True,capture_output=True)
     with socket.socket() as sock:
@@ -53,12 +53,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.37' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.38' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.37' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.38' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.37' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.38' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.37 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.38 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -80,7 +80,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         status,html,_=get(admin,'admin.php',{'csrf':csrf(html),'game_id':1,'score_a':2,'score_b':1,'played_at':'2026-09-20'})
         assert status==200
         status,html,_=get(admin,'usuarios.php')
-        status,html,_=get(admin,'usuarios.php',{'csrf':csrf(html),'action':'create','name':'Teste <script>alert(1)</script>','username':'novo','email':'teste@example.invalid','player_id':''})
+        status,html,_=get(admin,'usuarios.php',{'csrf':csrf(html),'action':'create','name':'Teste <script>alert(1)</script>','username':'novo','email':'teste@example.invalid','player_id':'','role':'admin'})
         assert status==200 and 'Usuário cadastrado' in html
         status,html,_=get(admin,'usuarios.php',{'csrf':csrf(html),'action':'toggle','user_id':3})
         assert status==200
@@ -173,19 +173,19 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert 'Salvar privilégios' in access_form
         assert get(athlete,'usuarios.php',{'action':'privilege','user_id':2,'role':'admin'})[0]==403
         assert get(normal_admin,'usuarios.php',{'action':'privilege','user_id':2,'role':'admin'})[0]==403
-        assert get(admin,'usuarios.php',{'csrf':'invalid','action':'privilege','user_id':2,'role':'admin','previous_player':'1'})[0]==400
-        status,access_form,_=get(admin,'usuarios.php',{'csrf':csrf(access_form),'action':'privilege','user_id':2,'role':'admin','previous_player':'1'})
+        assert get(admin,'usuarios.php',{'csrf':'invalid','action':'privilege','user_id':2,'role':'admin','previous_player':'1','previous_role':'player'})[0]==400
+        status,access_form,_=get(admin,'usuarios.php',{'csrf':csrf(access_form),'action':'privilege','user_id':2,'role':'admin','previous_player':'1','previous_role':'player'})
         assert db.execute('SELECT player_id FROM users WHERE id=2').fetchone()[0] is None
         assert get(athlete,'auditoria.php')[0]==200
         assert get(athlete,'usuarios.php')[0]==403
-        status,access_form,_=get(admin,'usuarios.php',{'csrf':csrf(access_form),'action':'privilege','user_id':2,'role':'player','player_id':2,'previous_player':''})
+        status,access_form,_=get(admin,'usuarios.php',{'csrf':csrf(access_form),'action':'privilege','user_id':2,'role':'player','player_id':2,'previous_player':'','previous_role':'admin'})
         assert db.execute('SELECT player_id FROM users WHERE id=2').fetchone()[0]==2
         assert get(athlete,'auditoria.php')[0]==403
         assert get(athlete,'backup.php')[0]==403
         status,own_form,_=get(athlete,'botonistas.php')
         assert 'value="Jogador 2"' in own_form
         assert get(athlete,'botonistas.php',{'csrf':csrf(own_form),'player_id':1,'old_name':'Mateus Corrigido','name':'Outro'})[0]==403
-        for params in [{'role':'player','player_id':9999,'previous_player':'2'}, {'role':'master','previous_player':'2'}, {'role':'admin','previous_player':'1'}]:
+        for params in [{'role':'player','player_id':9999,'previous_player':'2','previous_role':'player'}, {'role':'master','previous_player':'2','previous_role':'player'}, {'role':'admin','previous_player':'1','previous_role':'player'}]:
             status,access_form,_=get(admin,'usuarios.php',dict(csrf=csrf(access_form),action='privilege',user_id=2,**params))
             assert db.execute('SELECT player_id FROM users WHERE id=2').fetchone()[0]==2
         assert db.execute("SELECT COUNT(*) FROM audit_log WHERE action='Privilégios alterados'").fetchone()[0]==2
@@ -193,7 +193,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert status==200
         assert get(normal_admin,'backup.php',{'csrf':csrf(backup_form),'action':'restore','backup_name':backup_name})[0]==403
         db.execute("CREATE TRIGGER fail_privilege_log BEFORE INSERT ON audit_log BEGIN SELECT RAISE(ABORT, 'teste'); END");db.commit()
-        status,access_form,_=get(admin,'usuarios.php',{'csrf':csrf(access_form),'action':'privilege','user_id':2,'role':'admin','previous_player':'2'})
+        status,access_form,_=get(admin,'usuarios.php',{'csrf':csrf(access_form),'action':'privilege','user_id':2,'role':'admin','previous_player':'2','previous_role':'player'})
         assert db.execute('SELECT player_id FROM users WHERE id=2').fetchone()[0]==2
         assert 'Nenhuma alteração foi confirmada' in access_form
         print('OK: apenas acesso principal muda niveis; sessoes abertas respeitam promocao e rebaixamento')
@@ -286,7 +286,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         status,sheet,_=get(admin,'sumula.php?game=650',{'csrf':csrf(form),'match_date':date.today().isoformat()})
         assert status==200 and 'id="sumula-qr"' in sheet and 'api.qrserver.com' not in sheet
         notice_id=db.execute("SELECT event_id FROM audit_log WHERE action='Súmula gerada' AND target='Jogo 650' ORDER BY rowid DESC LIMIT 1").fetchone()[0]
-        expected_emails={row[0].lower() for row in db.execute('SELECT email FROM users WHERE player_id IN (1,2)')}
+        expected_emails={row[0].lower() for row in db.execute('SELECT email FROM users WHERE player_id IN (1,2)')} | {'organizer@example.invalid'}
         delivered={row[0] for row in db.execute("SELECT recipient FROM email_notifications WHERE event_id=? AND status='sent'",(notice_id,))}
         assert expected_emails and expected_emails.issubset(delivered)
 
@@ -297,6 +297,23 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         (ROOT/'previews/sumula-local.html').write_text(fixture,encoding='utf-8')
         assert get(admin,'sumula.php?game=1')[0]==409
         print('OK: sumula com QR local, recursos locais e bloqueio para jogo concluido')
+
+        # Link an existing administrator without restricting access or guessing names.
+        status,roles_form,_=get(admin,'usuarios.php')
+        status,roles_form,_=get(admin,'usuarios.php',{'csrf':csrf(roles_form),'action':'privilege','user_id':1,'role':'admin','player_id':1,'previous_player':'','previous_role':'admin'})
+        assert db.execute('SELECT role,player_id FROM users WHERE id=1').fetchone()==('admin',1)
+        assert get(normal_admin,'auditoria.php')[0]==200
+        assert get(normal_admin,'usuarios.php')[0]==403
+        db.execute('UPDATE games SET player_a_id=2,player_b_id=3 WHERE id=649');db.commit()
+        assert get(normal_admin,'sumula.php?game=649')[0]==200
+        assert get(client(),'sumula-login.php',{'login':'Gestor','password':'test-only','game_id':649})[0]==200
+        status,form,_=get(normal_admin,'sumula.php?game=650')
+        assert get(normal_admin,'sumula.php?game=650',{'csrf':csrf(form),'match_date':date.today().isoformat()})[0]==200
+        event=db.execute("SELECT event_id FROM audit_log WHERE target='Jogo 650' ORDER BY rowid DESC LIMIT 1").fetchone()[0]
+        assert db.execute("SELECT status FROM email_notifications WHERE event_id=? AND recipient='gestor.novo@example.invalid'",(event,)).fetchone()==('sent',)
+        status,audit_html,_=get(normal_admin,'auditoria.php')
+        assert 'Ver destinatários dos avisos' in audit_html and 'gestor.novo@example.invalid' in audit_html and 'organizer@example.invalid' in audit_html
+        print('OK: administrador vinculado acessa outros jogos, recebe aviso pessoal e auditoria mostra destinatarios')
 
         db.close()
     finally:

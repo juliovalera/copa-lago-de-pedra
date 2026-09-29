@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function organizerNotificationEmail(): string
 {
-    return trim((string) (getenv('COPA_NOTIFY_EMAIL') ?: (config()['notification_email'] ?? '')));
+    return strtolower(trim((string) (getenv('COPA_NOTIFY_EMAIL') ?: (config()['notification_email'] ?? ''))));
 }
 
 function initialiseNotifications(): void
@@ -69,7 +69,7 @@ function queuePlayerNotification(string $eventId, string $action, string $source
             }
         }
     }
-    if ($source !== 'QR Code' && !$playerInvite && (!$user || $user['player_id'] === null)) return;
+    if ($source !== 'QR Code' && !$playerInvite && !$user && !isMasterAdmin()) return;
     $organizerEmail = organizerNotificationEmail();
     if (!filter_var($organizerEmail, FILTER_VALIDATE_EMAIL)) return;
     db()->prepare("INSERT INTO email_notifications(event_id, recipient) VALUES (?, ?) ON CONFLICT(event_id,recipient) DO UPDATE SET audience=CASE WHEN audience='account' THEN 'account' ELSE 'organizer' END")->execute([$eventId, $organizerEmail]);

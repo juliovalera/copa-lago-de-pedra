@@ -8,3 +8,5 @@
 .audit-intro{margin-top:24px}.audit-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.audit-events{display:grid;gap:16px}.audit-events h2{margin:14px 0 8px;font-size:22px}.audit-events summary{cursor:pointer;font-weight:700;padding:12px 0;min-height:44px}.audit-comparison{display:grid;grid-template-columns:1fr 1fr;gap:16px}.audit-comparison section{background:#f6f7f3;padding:16px;border-radius:8px}.audit-comparison dt{font-weight:700}.audit-comparison dd{margin:0 0 12px}.audit-events p,.audit-comparison dd{overflow-wrap:anywhere}@media(max-width:600px){.audit-filters,.audit-comparison{grid-template-columns:1fr}}
 
 .app-help{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px 20px;margin-top:28px;padding:16px 0;border-top:1px solid #dce5da;font-size:14px;color:#40584c}.app-help a{display:inline-flex;align-items:center;min-height:44px;color:#123e32}.login-back{width:100%}.login input{width:100%;min-width:0}.login .eyebrow{color:#40584c}
+
+.notification-recipient { overflow-wrap: anywhere; }

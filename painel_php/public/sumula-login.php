@@ -35,7 +35,7 @@ if (!$user) {
     reply(false, $attempt['message'], ['status'=>$attempt['retry_after'] ? 429 : 403]);
 }
 
-$playerId = $user['player_id'] === null ? null : (int) $user['player_id'];
+$playerId = $login === '' ? null : userGameRestriction($user);
 if (!gameIsAccessible($gameId, $playerId)) reply(false, 'Sua conta não tem permissão para gerar a súmula deste jogo.');
 if ($game['score_a'] !== null || $game['score_b'] !== null) reply(false, 'Este jogo já tem resultado salvo. Não é possível gerar uma súmula.');
 

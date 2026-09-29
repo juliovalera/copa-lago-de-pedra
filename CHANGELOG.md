@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 1.38 — 29/09/2026
+
+- Nível de acesso separado do vínculo com o botonista: administradores podem receber avisos das suas partidas sem perder acesso aos demais jogos.
+- Migração automática e restauração de backups antigos preservam os privilégios existentes; associações de administradores são feitas explicitamente pelo acesso principal.
+- Ações administrativas também avisam a organização no endereço configurado, sem duplicar destinatários na mesma ação.
+- Auditoria mostra destinatários, situação e tentativas de cada aviso; sem reenvio retroativo ou tarefas agendadas.
+
 ## 1.37 — 28/09/2026
 
 - Geração e reemissão de súmula passam a avisar os dois jogadores com e-mail válido na conta vinculada.

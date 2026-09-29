@@ -88,6 +88,7 @@ function initialiseDatabase(): void
         used_at TEXT NULL,
         created_at TEXT NOT NULL
     )');
+    initialiseUserRoles();
     initialiseAudit();
     initialiseNotifications();
     initialiseLoginSecurity();
@@ -97,6 +98,26 @@ function initialiseDatabase(): void
     $pdo->exec('CREATE INDEX IF NOT EXISTS referee_links_token_idx ON referee_links(token)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS users_player_idx ON users(player_id)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS user_invites_token_idx ON user_invites(token_hash)');
+}
+
+function initialiseUserRoles(): void
+{
+    $pdo = db();
+    if (in_array('role', array_column($pdo->query('PRAGMA table_info(users)')->fetchAll(), 'name'), true)) return;
+    $pdo->exec('BEGIN IMMEDIATE');
+    try {
+        if (!in_array('role', array_column($pdo->query('PRAGMA table_info(users)')->fetchAll(), 'name'), true)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'player' CHECK(role IN ('admin','player'))");
+            $pdo->exec("UPDATE users SET role = CASE WHEN player_id IS NULL THEN 'admin' ELSE 'player' END");
+        }
+        $pdo->exec('COMMIT');
+    } catch (Throwable $error) { $pdo->exec('ROLLBACK'); throw $error; }
+}
+
+// Zero denies all games when a restricted account has lost its player link.
+function userGameRestriction(array $user): ?int
+{
+    return ($user['role'] ?? '') === 'admin' ? null : (int) ($user['player_id'] ?? 0);
 }
 
 function currentUser(): ?array
@@ -114,7 +135,7 @@ function isMasterAdmin(): bool
 
 function hasFullAccess(): bool
 {
-    return isMasterAdmin() || (currentUser() !== null && currentUser()['player_id'] === null);
+    return isMasterAdmin() || (currentUser()['role'] ?? '') === 'admin';
 }
 
 function requirePanelAccess(): array

@@ -36,6 +36,7 @@ $pdo->exec('DROP TRIGGER block_account_audit');
 auditedTransaction(static function (): void {
     auditRecord('Senha definida e conta ativada','Usuário 2',[],['senha_definida'=>true], 'Convite','Conta de teste');
 });
-$email=end($GLOBALS['testEmails']);
+$emails=array_values(array_filter($GLOBALS['testEmails'],fn($e)=>$e['recipient']==='other@example.invalid'));
+$email=end($emails);
 check($email['recipient']==='other@example.invalid' && str_contains($email['text'],'senha foi definida'), 'senha notifica inclusive conta sem emissor autenticado');
 check(!str_contains($email['text'],'token_hash') && !str_contains($email['text'],'password_hash'),'aviso nao inclui segredos');

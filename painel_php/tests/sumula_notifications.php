@@ -7,16 +7,16 @@ $_SESSION=['legacy_admin'=>true];
 $GLOBALS['testEmails']=[];
 $date=date('Y-m-d',strtotime('+1 day'));
 $link=dailyRefereeLink(501,$date);
-check(count($GLOBALS['testEmails'])===2,'sumula gerada por administrador avisa os dois jogadores');
-foreach ($GLOBALS['testEmails'] as $email) {
+check(count($GLOBALS['testEmails'])===3,'sumula gerada por administrador avisa os dois jogadores');
+foreach (array_filter($GLOBALS['testEmails'],fn($e)=>$e['recipient']!=='organizer@example.invalid') as $email) {
     check(str_contains($email['text'],'Teste A x Teste B') && str_contains($email['text'],date('d/m/Y',strtotime($date))), 'aviso contem confronto e data escolhida');
     check(!str_contains($email['text'],$link['token']) && !str_contains($email['text'],'arbitro.php?t='), 'aviso nao divulga token de registro');
 }
 $same=dailyRefereeLink(501,$date);
-check($same['token']===$link['token'] && count($GLOBALS['testEmails'])===4,'reemissao mantém QR e avisa jogadores');
+check($same['token']===$link['token'] && count($GLOBALS['testEmails'])===6,'reemissao mantém QR e avisa jogadores');
 $_SESSION=['user_id'=>1];
 dailyRefereeLink(501,$date);
-check(count($GLOBALS['testEmails'])===7,'geracao pelo botonista preserva copia ao organizador');
+check(count($GLOBALS['testEmails'])===9,'geracao pelo botonista preserva copia ao organizador');
 $GLOBALS['testFailRecipient']='b@example.invalid';
 $prior=count($GLOBALS['testEmails']);
 dailyRefereeLink(501,$date);

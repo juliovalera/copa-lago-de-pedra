@@ -13,7 +13,7 @@ foreach (['2026-02-30','2026-04-31','2026-02-29','0000-01-01','2026-13-01','2026
 }
 savePanelResult(401,1,0,'2024-02-29');
 check(gameById(401)['played_at'] === '2024-02-29', 'ano bissexto aceito');
-check(count($GLOBALS['testEmails']) === 1, 'aviso enviado ao salvar, sem agendamento');
+check(count($GLOBALS['testEmails']) === 2, 'aviso enviado ao salvar, sem agendamento');
 // Compatibility with databases already upgraded to 1.33: stale retry dates do not block manual delivery.
 $pdo->exec('ALTER TABLE email_notifications ADD COLUMN next_attempt_at TEXT NULL');
 $GLOBALS['testSmtpFailure'] = true;
@@ -23,6 +23,6 @@ $row=$pdo->query("SELECT event_id FROM email_notifications WHERE recipient='demo
 $pdo->prepare("UPDATE email_notifications SET status='pending', attempts=5,next_attempt_at='2099-01-01T00:00:00+00:00' WHERE event_id=?")->execute([$row['event_id']]);
 $GLOBALS['testSmtpFailure'] = false;
 sendPlayerNotification($row['event_id']);sendPlayerNotification($row['event_id']);
-check(count($GLOBALS['testEmails'])===2, 'reenvio manual funciona com banco 1.33 e nao duplica confirmado');
+check(count($GLOBALS['testEmails'])===4, 'reenvio manual funciona com banco 1.33 e nao duplica confirmado');
 savePanelResult(401,null,null,'');
 check(gameById(401)['played_at']===null, 'remocao limpa data');

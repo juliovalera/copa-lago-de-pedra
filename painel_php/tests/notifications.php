@@ -36,15 +36,15 @@ $email = $lastOrganizer();
 check($count() === $initial+6 && str_contains($email['text'],'QR Code') && !str_contains($email['text'],$link['token']), 'QR gera aviso sem divulgar token e sem presumir identidade');
 $_SESSION = ['legacy_admin'=>true];
 savePanelResult(201,2,0,date('Y-m-d'));
-check($count() === $initial+6, 'alteração administrativa não dispara aviso de jogador');
+check($count() === $initial+7, 'alteração administrativa também avisa a organização');
 $_SESSION = ['user_id'=>1];
 $pdo->exec("CREATE TRIGGER fail_notification BEFORE INSERT ON email_notifications BEGIN SELECT RAISE(ABORT, 'falha'); END");
 $blocked = false;
 try { savePanelResult(201,9,9,date('Y-m-d')); } catch (PDOException $e) { $blocked = true; }
-check($blocked && gameById(201)['score_a'] === 2 && $count() === $initial+6, 'transação revertida não dispara e-mail');
+check($blocked && gameById(201)['score_a'] === 2 && $count() === $initial+7, 'transação revertida não dispara e-mail');
 $pdo->exec('DROP TRIGGER fail_notification');
 $_SESSION = [];
 auditedTransaction(static function (): void {
     auditRecord('Senha definida e conta ativada', 'Usuário 1', [], ['ativo'=>1,'senha_definida'=>true,'jogador_id'=>1], 'Convite', 'Botonista de teste');
 });
-check($count() === $initial+7 && str_contains($lastOrganizer()['subject'], 'conta ativada'), 'ativação por convite de botonista gera aviso sem senha');
+check($count() === $initial+8 && str_contains($lastOrganizer()['subject'], 'conta ativada'), 'ativação por convite de botonista gera aviso sem senha');

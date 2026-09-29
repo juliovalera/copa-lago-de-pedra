@@ -64,27 +64,26 @@ function savePanelResult(int $id, ?int $a, ?int $b, string $date): void
     });
 }
 
-function changeUserPrivilege(int $id, string $role, ?int $playerId, string $expectedPlayer): void
+function changeUserPrivilege(int $id, string $role, ?int $playerId, string $expectedPlayer, string $expectedRole): void
 {
     if (!isMasterAdmin()) throw new RuntimeException('Somente o administrador máximo pode alterar privilégios.');
     if (!in_array($role, ['admin', 'player'], true) || ($role === 'player' && !$playerId)) {
         throw new InvalidArgumentException('Selecione o nível e vincule um botonista quando necessário.');
     }
-    $playerId = $role === 'admin' ? null : $playerId;
-    auditedTransaction(static function () use ($id, $playerId, $expectedPlayer): void {
-        $query = db()->prepare('SELECT id, name, player_id FROM users WHERE id = ?');
+    auditedTransaction(static function () use ($id, $role, $playerId, $expectedPlayer, $expectedRole): void {
+        $query = db()->prepare('SELECT id, name, player_id, role FROM users WHERE id = ?');
         $query->execute([$id]); $before = $query->fetch();
         if (!$before) throw new InvalidArgumentException('Usuário não encontrado.');
-        if ((string) ($before['player_id'] ?? '') !== $expectedPlayer) throw new InvalidArgumentException('O acesso foi alterado por outra pessoa. Confira a situação atual e tente novamente.');
+        if ((string) ($before['player_id'] ?? '') !== $expectedPlayer || $before['role'] !== $expectedRole) throw new InvalidArgumentException('O acesso foi alterado por outra pessoa. Confira a situação atual e tente novamente.');
         if ($playerId !== null) {
             $query = db()->prepare('SELECT id FROM players WHERE id = ?'); $query->execute([$playerId]);
             if (!$query->fetchColumn()) throw new InvalidArgumentException('Botonista não encontrado.');
         }
-        if ($before['player_id'] === $playerId) return;
-        db()->prepare('UPDATE users SET player_id = ? WHERE id = ?')->execute([$playerId, $id]);
+        if ($before['player_id'] === $playerId && $before['role'] === $role) return;
+        db()->prepare('UPDATE users SET player_id = ?, role = ? WHERE id = ?')->execute([$playerId, $role, $id]);
         auditRecord('Privilégios alterados', 'Usuário ' . $id,
-            ['nome'=>$before['name'], 'jogador_id'=>$before['player_id'], 'nivel'=>$before['player_id'] === null ? 'Administrador' : 'Botonista'],
-            ['nome'=>$before['name'], 'jogador_id'=>$playerId, 'nivel'=>$playerId === null ? 'Administrador' : 'Botonista']);
+            ['nome'=>$before['name'], 'jogador_id'=>$before['player_id'], 'nivel'=>$before['role'] === 'admin' ? 'Administrador' : 'Botonista'],
+            ['nome'=>$before['name'], 'jogador_id'=>$playerId, 'nivel'=>$role === 'admin' ? 'Administrador' : 'Botonista']);
     });
 }
 
@@ -156,6 +155,9 @@ function restoreAuditedBackup(string $source, string $safety): void
                 $columns = array_intersect($current, $columns);
                 $list = implode(',', array_map(static fn($name) => '"' . $name . '"', $columns));
                 $pdo->exec('INSERT INTO main.' . $table . ' (' . $list . ') SELECT ' . $list . ' FROM restoration.' . $table);
+                if ($table === 'users' && !in_array('role', $columns, true)) {
+                    $pdo->exec("UPDATE main.users SET role = CASE WHEN player_id IS NULL THEN 'admin' ELSE 'player' END");
+                }
             }
             if (in_array('audit_log', $tables, true)) $pdo->exec('INSERT OR IGNORE INTO main.audit_log SELECT * FROM restoration.audit_log');
             auditRecord('Backup restaurado', 'Banco de dados', [], ['arquivo'=>basename($source), 'seguranca'=>basename($safety)], 'Painel', $actor);
