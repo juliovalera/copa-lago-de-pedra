@@ -350,7 +350,7 @@ function publicData(): array
     unset($player);
 
     return [
-        'title' => 'I Copa Lago de Pedra', 'source' => 'SQLite', 'importedAt' => gmdate('c'),
+        'title' => 'I Copa Lago de Pedra', 'source' => 'SQLite',
         'players' => $players, 'games' => $publicGames, 'issues' => [],
         'totals' => ['points' => array_sum(array_column($players, 'points')), 'goalsFor' => array_sum(array_column($players, 'goalsFor')), 'goalsAgainst' => array_sum(array_column($players, 'goalsAgainst'))],
         'playedGames' => $playedGames, 'pendingGames' => count($publicGames) - $playedGames,

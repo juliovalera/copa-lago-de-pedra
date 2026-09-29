@@ -59,7 +59,9 @@
   const bestScorers = scorers.filter(p => p.goalsFor === scorers[0].goalsFor);
   $('#competition-players').textContent = players.length;
   $('#competition-games').textContent = data.games.length;
-  $('#import-date').textContent = 'Dados importados em ' + new Date(data.importedAt).toLocaleDateString('pt-BR');
+  $('#import-date').textContent = data.source === 'SQLite'
+    ? 'Classificação baseada nos resultados registrados'
+    : 'Dados importados em ' + new Date(data.importedAt).toLocaleDateString('pt-BR');
   $('#summary').innerHTML = [
     ['PARTICIPANTES', players.length, `${players.filter(p => p.played > 0).length} já entraram em jogo`, '◉', false],
     ['NA LIDERANÇA', leader.name, `${leader.points} pontos · classificação recalculada`, '⚑', true],

@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.42 — 29/09/2026
+
+- Corrigido o aviso público da versão PHP: a data da consulta não é mais apresentada como data de importação.
+- Exibido o texto “Classificação baseada nos resultados registrados”, sem inventar uma data de importação.
+
 ## 1.41 — 29/09/2026
 
 - Escolha entre imprimir a súmula com QR e preencher/assinar no celular; QR impresso também abre o preenchimento digital.
