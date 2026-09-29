@@ -10,3 +10,26 @@
 .app-help{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px 20px;margin-top:28px;padding:16px 0;border-top:1px solid #dce5da;font-size:14px;color:#40584c}.app-help a{display:inline-flex;align-items:center;min-height:44px;color:#123e32}.login-back{width:100%}.login input{width:100%;min-width:0}.login .eyebrow{color:#40584c}
 
 .notification-recipient { overflow-wrap: anywhere; }
+
+/* User management: readable cards without horizontally scrolling tables. */
+.users-page .user-layout{grid-template-columns:minmax(0,1fr)}
+.users-page .new-user-form{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.users-page .new-user-form>div{grid-column:1/-1}
+.users-list h2{margin:0 0 16px;font-size:25px}
+.user-cards{display:grid;gap:20px}
+.user-card{min-width:0;background:var(--white);border:1px solid var(--line);border-radius:14px;padding:24px;overflow-wrap:anywhere}
+.user-card-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.user-card-heading h3{margin:0;font-size:22px;line-height:1.3}
+.user-card-heading p{margin:6px 0 0;color:var(--muted)}
+.user-info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:20px 0}
+.user-info dt{font-weight:750;color:var(--muted);font-size:14px}
+.user-info dd{margin:4px 0 0}
+.user-editors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;margin-bottom:16px}
+.user-editors details{min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.user-editors summary{cursor:pointer;min-height:48px;padding:12px 16px;font-weight:750;color:var(--green)}
+.user-editors summary:focus-visible{outline:3px solid #347758;outline-offset:3px}
+.user-editors .user-form{padding:4px 16px 16px}
+.users-page .user-form input,.users-page .user-form select{min-width:0;max-width:100%}
+.users-page .user-form label{min-width:0}
+.users-page .button{max-width:100%;white-space:normal;min-height:44px}
+@media(max-width:700px){.users-page .new-user-form,.user-info,.user-editors{grid-template-columns:minmax(0,1fr)}.user-card{padding:16px}.user-card-heading{flex-direction:column}.user-card-heading .status{white-space:normal}}

@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.39 — 29/09/2026
+
+- Tela de usuários reorganizada em cartões responsivos, com dados e formulários de privilégios visíveis sem arrastar tabelas horizontalmente.
+- Tipografia legível, campos adaptados ao celular e controles com área de toque ampliada.
+
 ## 1.38 — 29/09/2026
 
 - Nível de acesso separado do vínculo com o botonista: administradores podem receber avisos das suas partidas sem perder acesso aos demais jogos.
