@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.43 — 29/09/2026
+
+- Rodapé da área pública PHP identifica a fonte como resultados registrados no sistema da competição, em coerência com a legenda da classificação.
+
 ## 1.42 — 29/09/2026
 
 - Corrigido o aviso público da versão PHP: a data da consulta não é mais apresentada como data de importação.

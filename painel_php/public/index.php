@@ -26,6 +26,7 @@ $html = preg_replace_callback(
     },
     $html
 );
+$html = str_replace('Fonte: tabela de jogos da competição', 'Fonte: resultados registrados no sistema da competição.', $html);
 $html = str_replace('</footer>', '<a class="panel-access" href="admin.php">Acesso ao painel</a><a class="panel-access" href="guia.php">Guia de uso</a>' . copaVersionButton() . '</footer>', $html);
 $sumulaModal = <<<'HTML'
 <dialog id="sumula-login-dialog" aria-labelledby="sumula-login-title"><div class="dialog-top"><span class="eyebrow dark">SÚMULA DA PARTIDA</span><button id="close-sumula-login" class="icon-button" type="button" aria-label="Fechar">×</button></div><h2 id="sumula-login-title">Gerar súmula com QR</h2><p id="sumula-login-game" class="player-subtitle"></p><p class="player-subtitle">Informe seu login ou e-mail e senha. O acesso será liberado somente se sua conta tiver permissão para este jogo.</p><p id="sumula-login-error" class="sumula-login-error" role="alert" hidden></p><form id="sumula-login-form"><input id="sumula-login-game-id" name="game_id" type="hidden"><label>Login ou e-mail<input id="sumula-login-name" name="login" type="text" autocomplete="username" required autofocus></label><label>Senha<input id="sumula-login-password" name="password" type="password" autocomplete="current-password" required></label><div class="dialog-actions"><button class="primary" type="submit">Gerar súmula</button></div></form></dialog>
