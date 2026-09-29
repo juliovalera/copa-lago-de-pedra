@@ -52,12 +52,22 @@ function validGameDate(string $date): bool
         && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
 }
 
-function savePanelResult(int $id, ?int $a, ?int $b, string $date): void
+class ResultConflict extends RuntimeException {}
+
+function panelResultToken(array $game): string
+{
+    return hash('sha256', json_encode([$game['id'], $game['player_a_id'], $game['player_b_id'], $game['score_a'], $game['score_b'], $game['played_at'], $game['result_revision']], JSON_THROW_ON_ERROR));
+}
+
+function savePanelResult(int $id, ?int $a, ?int $b, string $date, string $expected): void
 {
     if ($a !== null && !validGameDate($date)) throw new InvalidArgumentException('Informe uma data existente no calendário.');
-    auditedTransaction(static function () use ($id, $a, $b, $date): void {
+    auditedTransaction(static function () use ($id, $a, $b, $date, $expected): void {
         $before = gameById($id);
         if (!$before) throw new RuntimeException('Jogo não encontrado.');
+        if (!hash_equals(panelResultToken($before), $expected)) {
+            throw new ResultConflict('Este jogo foi atualizado depois que você abriu o formulário. Sua alteração não foi salva. Confira o placar e a data atuais antes de tentar novamente.');
+        }
         db()->prepare('UPDATE games SET score_a = ?, score_b = ?, played_at = ? WHERE id = ?')->execute([$a, $b, $a === null ? null : $date, $id]);
         $after = gameById($id);
         if (auditGame($before) !== auditGame($after)) auditRecord($a === null ? 'Resultado removido' : 'Resultado salvo', 'Jogo ' . $id, auditGame($before), auditGame($after));

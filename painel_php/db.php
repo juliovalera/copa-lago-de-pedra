@@ -89,6 +89,18 @@ function initialiseDatabase(): void
         created_at TEXT NOT NULL
     )');
     initialiseUserRoles();
+    $gameColumns = array_column($pdo->query('PRAGMA table_info(games)')->fetchAll(), 'name');
+    if (!in_array('result_revision', $gameColumns, true)) {
+        $pdo->exec('BEGIN IMMEDIATE');
+        try {
+            $gameColumns = array_column($pdo->query('PRAGMA table_info(games)')->fetchAll(), 'name');
+            if (!in_array('result_revision', $gameColumns, true)) $pdo->exec('ALTER TABLE games ADD COLUMN result_revision INTEGER NOT NULL DEFAULT 0');
+            $pdo->exec('COMMIT');
+        } catch (Throwable $error) { $pdo->exec('ROLLBACK'); throw $error; }
+    }
+    $pdo->exec('CREATE TRIGGER IF NOT EXISTS games_result_revision AFTER UPDATE OF score_a, score_b, played_at ON games
+        WHEN OLD.score_a IS NOT NEW.score_a OR OLD.score_b IS NOT NEW.score_b OR OLD.played_at IS NOT NEW.played_at
+        BEGIN UPDATE games SET result_revision = OLD.result_revision + 1 WHERE id = NEW.id; END');
     initialiseAudit();
     initialiseNotifications();
     initialiseLoginSecurity();

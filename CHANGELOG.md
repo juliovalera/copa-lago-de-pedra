@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.40 — 29/09/2026
+
+- Salvamento do painel confere a revisão do resultado exibido e bloqueia formulários desatualizados, preservando alterações feitas por outras pessoas ou pelo QR.
+- Proteção cobre placares, datas e exclusões; conflito orienta a conferir o jogo na rodada correspondente, sem enviar avisos ou registrar alteração de resultado.
+- Migração automática adiciona controle de revisão sem modificar os resultados existentes.
+
 ## 1.39 — 29/09/2026
 
 - Tela de usuários reorganizada em cartões responsivos, com dados e formulários de privilégios visíveis sem arrastar tabelas horizontalmente.

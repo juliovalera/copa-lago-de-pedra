@@ -205,3 +205,7 @@ Contato público: **julio@projetos.tec.br**.
 Código e documentação distribuídos sob a [licença MIT](LICENSE). Preserve o aviso de autoria ao redistribuir. A licença do software não concede direitos sobre marcas e logotipos da Copa Lago de Pedra ou da Liga Mogiana; consulte seus titulares antes de reutilizá-los em outra identidade visual.
 
 A geração local de QR usa [QR Code Generator, de Kazuhiko Arase](painel_php/public/vendor/qrcode-generator/README.md), com sua licença MIT preservada.
+
+### Proteção contra edições simultâneas
+
+Desde a versão 1.40, o painel verifica a revisão do jogo antes de salvar placar, data ou remoção. Se outro acesso ou QR atualizou o resultado, o formulário antigo é recusado e o usuário deve conferir os dados atuais antes de tentar novamente. A migração adiciona `games.result_revision`; mudanças reais incrementam a revisão dentro da mesma transação. Conflitos não geram aviso de resultado nem alteram a classificação.

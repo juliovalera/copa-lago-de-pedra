@@ -46,6 +46,9 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         try:
             with c.open(base+path,None if data is None else urlencode(data).encode(),timeout=5) as r: return r.status,r.read().decode(),r.url
         except HTTPError as e: return e.code,e.read().decode(),e.url
+    def result_token(html, game_id=1):
+        form=next(f for f in re.findall(r'<form class="game-form".*?</form>',html) if 'name="game_id" value="'+str(game_id)+'"' in f)
+        return re.search(r'name="result_token" value="([^"]+)"',form).group(1)
     def csrf(html): return re.search(r'name="csrf" value="([^"]+)"',html).group(1)
     try:
         guest=client()
@@ -53,12 +56,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.39' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.40' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.39' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.40' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.39' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.40' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -68,7 +71,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.39 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.40 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -77,7 +80,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         normal_admin=client();get(normal_admin,'admin.php',{'login':'Gestor','password':'test-only'})
         assert get(normal_admin,'usuarios.php')[0]==403
         admin=client();status,html,_=get(admin,'admin.php',{'login':'','password':'test-only'})
-        status,html,_=get(admin,'admin.php',{'csrf':csrf(html),'game_id':1,'score_a':2,'score_b':1,'played_at':'2026-09-20'})
+        status,html,_=get(admin,'admin.php',{'csrf':csrf(html),'result_token':result_token(html),'game_id':1,'score_a':2,'score_b':1,'played_at':'2026-09-20'})
         assert status==200
         status,html,_=get(admin,'usuarios.php')
         status,html,_=get(admin,'usuarios.php',{'csrf':csrf(html),'action':'create','name':'Teste <script>alert(1)</script>','username':'novo','email':'teste@example.invalid','player_id':'','role':'admin'})
@@ -117,7 +120,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert status==200
         backup_name=next((app/'backups').glob('*.sqlite')).name
         status,form,_=get(admin,'admin.php')
-        get(admin,'admin.php',{'csrf':csrf(form),'game_id':1,'score_a':5,'score_b':0,'played_at':'2026-09-21'})
+        get(admin,'admin.php',{'csrf':csrf(form),'result_token':result_token(form),'game_id':1,'score_a':5,'score_b':0,'played_at':'2026-09-21'})
         before=db.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0]
         status,form,_=get(admin,'backup.php')
         status,form,_=get(admin,'backup.php',{'csrf':csrf(form),'action':'restore','backup_name':backup_name})
@@ -315,6 +318,20 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         status,audit_html,_=get(normal_admin,'auditoria.php')
         assert 'Ver destinatários dos avisos' in audit_html and 'gestor.novo@example.invalid' in audit_html and 'organizer@example.invalid' in audit_html
         print('OK: administrador vinculado acessa outros jogos, recebe aviso pessoal e auditoria mostra destinatarios')
+
+        # Two sessions open the same result; only the first save may succeed.
+        first=get(admin,'admin.php')[1]
+        second=get(normal_admin,'admin.php')[1]
+        old=result_token(second)
+        get(admin,'admin.php',{'csrf':csrf(first),'result_token':result_token(first),'game_id':1,'score_a':7,'score_b':4,'played_at':'2026-09-20'})
+        counts=db.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0],db.execute('SELECT COUNT(*) FROM email_notifications').fetchone()[0]
+        status,conflict,url=get(normal_admin,'admin.php',{'csrf':csrf(second),'result_token':old,'game_id':1,'score_a':9,'score_b':9,'played_at':'2026-09-21'})
+        assert status==200 and 'Sua alteração não foi salva' in conflict and 'round=1' in url
+        assert db.execute('SELECT score_a,score_b FROM games WHERE id=1').fetchone()==(7,4)
+        assert counts==(db.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0],db.execute('SELECT COUNT(*) FROM email_notifications').fetchone()[0])
+        get(normal_admin,'admin.php',{'csrf':csrf(conflict),'result_token':result_token(conflict),'game_id':1,'score_a':8,'score_b':4,'played_at':'2026-09-20'})
+        assert db.execute('SELECT score_a FROM games WHERE id=1').fetchone()[0]==8
+        print('OK: duas sessoes preservam resultado mais recente e permitem salvar apos conferir')
 
         db.close()
     finally:
