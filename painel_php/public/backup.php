@@ -24,7 +24,7 @@ function backupFiles(): array
 }
 function selectedBackup(string $name): ?string
 {
-    if (!preg_match('/^copa-lago-de-pedra-\d{8}-\d{6}\.sqlite$/', $name)) return null;
+    if (!preg_match('/\Acopa-lago-de-pedra-\d{8}-\d{6}(?:-antes-da-restauracao)?\.sqlite\z/', $name)) return null;
     $file = backupDirectory() . '/' . $name;
     return is_file($file) ? $file : null;
 }

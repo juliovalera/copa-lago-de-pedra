@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.44 — 29/09/2026
+
+- Download das cópias com sufixo `-antes-da-restauracao.sqlite` liberado no painel, mantendo validação de nomes e acesso administrativo.
+- Teste antigo `tests/run.php` isolado: banco em memória, configuração temporária, 26 participantes e 650 jogos fictícios; sem carregar configuração privada ou enviar e-mails. Execução restrita à linha de comando.
+
 ## 1.43 — 29/09/2026
 
 - Rodapé da área pública PHP identifica a fonte como resultados registrados no sistema da competição, em coerência com a legenda da classificação.

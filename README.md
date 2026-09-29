@@ -170,6 +170,7 @@ scripts/check_publication.py # Conferência dos arquivos preparados no Git
 Com PHP e as extensões configurados, a partir da raiz:
 
 ```bash
+php painel_php/tests/run.php
 php painel_php/tests/queue_and_dates.php
 php painel_php/tests/history.php
 php painel_php/tests/notifications.php
@@ -221,3 +222,5 @@ Documentos finalizados são imutáveis. Correções administrativas do placar pr
 O botão de PDF usa a impressão nativa do navegador (opção Salvar como PDF do dispositivo). Os backups SQLite incluem as fichas e a restauração mantém documentos atuais, importando os ausentes sem substituir originais. Não existe editor de fichas assinadas.
 
 Teste isolado: `php painel_php/tests/digital_sheets.php`; os testes HTTP também cobrem a escolha dos formatos, CSRF, acesso privado e finalização.
+
+O teste `painel_php/tests/run.php` funciona somente pela linha de comando e prepara sua própria configuração temporária, banco em memória e dados fictícios. Não carrega o `config.php` da instalação e não envia e-mails. As cópias automáticas anteriores à restauração podem ser baixadas no painel, assim como os backups comuns.

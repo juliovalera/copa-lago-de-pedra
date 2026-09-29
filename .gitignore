@@ -21,7 +21,6 @@
 !/painel_php/data/.htaccess
 /painel_php/tests/*
 !/painel_php/tests/*.php
-/painel_php/tests/run.php
 !/painel_php/tests/audit_http.py
 /site/*
 !/site/index.html
