@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
     shutil.copytree(ROOT/'site', root/'site')
     app = root/'painel_php'
     (app/'public').mkdir(parents=True)
-    for name in ('spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
+    for name in ('documents.php', 'export_ui.php', 'spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
         shutil.copyfile(ROOT/'painel_php'/name, app/name)
     for path in (ROOT/'painel_php/public').glob('*'):
         if path.is_file(): shutil.copyfile(path, app/'public'/path.name)
@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.45' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.46' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.45' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.46' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.45' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.46' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.45 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.46 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -378,6 +378,10 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         print('OK: escolha papel/digital, CSRF, rascunho, assinaturas, finalizacao e consulta privada HTTP')
 
         # Public workbook exports every row, ignoring page filters, without private data.
+        db.execute('UPDATE players SET name=? WHERE id=1',('João & <Teste>',))
+        db.execute('UPDATE players SET name=? WHERE id=2',('Antônio de Oliveira e Albuquerque Júnior',))
+        db.execute('UPDATE games SET score_a=0,score_b=0,played_at=? WHERE id=2',('2024-02-29',))
+        db.commit()
         with guest.open(base+'exportar.php?q=nonexistent&status=pending') as response:
             assert response.headers['Content-Type']=='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             assert '.xlsx' in response.headers['Content-Disposition']
@@ -397,8 +401,53 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         (ROOT/'previews/export-full.xlsx').write_bytes(workbook)
         payload=get(guest,'data.php')[1]
         (ROOT/'previews/export-full.json').write_text(payload.removeprefix('window.COPA_DATA = ').removesuffix(';'),encoding='utf-8')
-        assert 'href="exportar.php"' in get(guest,'index.php')[1]
+        assert 'href="baixar.php"' in get(guest,'index.php')[1]
         print('OK: Excel publico com 26 classificados e 650 jogos, duas abas, filtros e sem dados privados')
+
+        for selection, counts in [('all',[26,650]),('ranking',[26]),('games',[650])]:
+            with guest.open(base+'exportar.php?format=xlsx&content='+selection) as response:
+                with zipfile.ZipFile(io.BytesIO(response.read())) as archive:
+                    sheet_names=[n for n in archive.namelist() if n.startswith('xl/worksheets/')]
+                    assert [len(ET.fromstring(archive.read(n)).findall('s:sheetData/s:row',ns))-4 for n in sheet_names]==counts
+            report=json.loads(get(guest,'exportar.php?format=pdf&content='+selection)[1])
+            assert [len(s['rows']) for s in report['sections']]==counts
+            assert all(logo.startswith('data:image/png;base64,') for logo in report['logos'])
+            assert '@example.invalid' not in json.dumps(report)
+            with guest.open(base+'exportar.php?format=docx&content='+selection) as response:
+                assert response.headers['Content-Type']=='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                document=response.read()
+            with zipfile.ZipFile(io.BytesIO(document)) as archive:
+                assert archive.testzip() is None
+                for name in archive.namelist():
+                    if name.endswith(('.xml','.rels')): ET.fromstring(archive.read(name))
+                wn={'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+                xml=ET.fromstring(archive.read('word/document.xml'))
+                tables=xml.findall('w:body/w:tbl',wn)
+                assert [len(t.findall('w:tr',wn))-1 for t in tables]==counts
+                for table,section in zip(tables,report['sections']):
+                    assert table.find('w:tr/w:trPr/w:tblHeader',wn) is not None
+                    rows=[[ ''.join(c.itertext()) for c in row.findall('w:tc',wn)] for row in table.findall('w:tr',wn)]
+                    assert rows==[section['headers']]+section['rows']
+                assert xml.find('w:body/w:sectPr/w:pgSz',wn).attrib['{'+wn['w']+'}orient']=='landscape'
+                assert archive.read('word/media/logo1.png')==(ROOT/'site/lago_de_pedra_256.png').read_bytes()
+                assert archive.read('word/media/logo2.png')==(ROOT/'site/liga_mogiana_256.png').read_bytes()
+                assert b'NUMPAGES' in archive.read('word/footer1.xml')
+                assert not any(b'@example.invalid' in archive.read(n) for n in archive.namelist())
+            (ROOT/f'previews/export-{selection}.docx').write_bytes(document)
+            (ROOT/f'previews/report-{selection}.json').write_text(json.dumps(report,ensure_ascii=False),encoding='utf-8')
+        for query in ['format=html','content=private','format[]=pdf','content[]=all']:
+            assert get(guest,'exportar.php?'+query)[0]==400
+        assert 'export-form' in get(guest,'baixar.php')[1]
+        assert 'export-dialog' in get(guest,'index.php')[1]
+        # Static, fictitious page for browser tests (no real DB or configuration).
+        preview=get(guest,'index.php')[1]
+        preview=re.sub(r'asset.php\?file=([^&"]+)(?:&v=\d+)?',r'../site/\1',preview)
+        preview=preview.replace('src="data.php"','src="export-data.js"')
+        for name in ['export.js','export.css','credits.js','credits.css']:
+            preview=preview.replace('="'+name,'="../painel_php/public/'+name)
+        (ROOT/'previews/export-page.html').write_text(preview,encoding='utf-8')
+        (ROOT/'previews/export-data.js').write_text(payload,encoding='utf-8')
+        print('OK: Word/PDF publicos, selecao de conteudo nos tres formatos, logos, cabecalhos e campos publicos')
 
         db.close()
     finally:

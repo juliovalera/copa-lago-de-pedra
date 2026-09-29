@@ -1,0 +1,18 @@
+.export-dialog{width:min(620px,calc(100% - 24px));max-height:90dvh;overflow:auto;padding:24px;border:1px solid #b4c8ba;border-radius:20px;color:#173e33;background:#fff}
+.export-dialog::backdrop{background:#102d25b3}
+.export-dialog h2{font-size:1.6rem;margin:0}
+.export-dialog .dialog-top{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.export-dialog .icon-button{min-width:44px;min-height:44px}
+.export-form{display:grid;gap:12px;font-size:1rem;line-height:1.5}
+.export-form label{font-weight:700;margin-top:8px}
+.export-form select{width:100%;min-width:0;min-height:48px;font:inherit;padding:10px;border:1px solid #708e7c;border-radius:8px;background:#fff;color:#173e33}
+.export-form p{margin:8px 0;overflow-wrap:anywhere}
+.export-form .primary{min-height:48px;font:inherit;font-weight:700;cursor:pointer}
+.export-form [hidden]{display:none!important}
+.export-form .export-status:empty{display:none}
+.export-form .export-status{font-weight:600}
+.export-form [data-error="true"]{color:#9a251e}
+.export-form :focus-visible,.export-dialog :focus-visible{outline:3px solid #ad6800;outline-offset:3px}
+.export-ready{display:block;padding:12px;border:2px solid #173e33;border-radius:8px;color:#173e33;font-weight:700}
+.export-page{max-width:720px;margin:32px auto;padding:24px;background:#fff;border-radius:16px}
+@media(max-width:480px){.export-dialog{padding:18px}.export-page{margin:12px;padding:18px}}

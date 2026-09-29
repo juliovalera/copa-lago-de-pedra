@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 1.46 — 29/09/2026
+
+- Baixar tabela oferece Excel, Word e PDF, com escolha entre classificação, jogos/resultados ou ambos, sem filtros da tela.
+- Word e PDF incluem os dois logos, data/hora da geração, tabelas em A4 horizontal, cabeçalhos repetidos e páginas numeradas. Classificação e jogos começam em páginas separadas.
+- PDF gerado no navegador com pdfmake e fontes incluídos no pacote, sem CDN, serviço externo ou instalação de programas na hospedagem. Word e Excel gerados pelo PHP.
+- Download acessível por teclado e celular, com mensagem de progresso, tratamento de falhas e link para salvar novamente. Guia atualizado; nenhum dado ou configuração do banco é alterado pela exportação.
+
 ## 1.45 — 29/09/2026
 
 - Botão público Baixar Excel gera arquivo `.xlsx` com abas Classificação e Jogos e resultados, sem aplicar filtros da tela.

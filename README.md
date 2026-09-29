@@ -225,10 +225,18 @@ Teste isolado: `php painel_php/tests/digital_sheets.php`; os testes HTTP também
 
 O teste `painel_php/tests/run.php` funciona somente pela linha de comando e prepara sua própria configuração temporária, banco em memória e dados fictícios. Não carrega o `config.php` da instalação e não envia e-mails. As cópias automáticas anteriores à restauração podem ser baixadas no painel, assim como os backups comuns.
 
-### Exportação Excel (1.45)
+### Downloads em Excel, Word e PDF (1.46)
 
-Na área pública PHP, **Baixar Excel** acessa `public/exportar.php`. O arquivo `.xlsx` inclui **Classificação** e **Jogos e resultados**, sempre completos e com o mesmo retrato do banco, independentemente dos filtros da tela. Datas e percentuais são valores tipados, nomes são texto literal (nunca fórmulas), e placares pendentes ficam vazios.
+Na área pública PHP, **Baixar tabela** abre a escolha de formato e conteúdo: **Classificação**, **Jogos e resultados** ou **ambos**. O download usa o mesmo retrato do banco, independentemente dos filtros da tela. Excel mantém abas separadas, datas e percentuais tipados e nomes como texto literal (nunca fórmulas). Placares pendentes ficam vazios; 0 × 0 permanece um empate registrado.
+
+Word (`.docx`) e PDF têm cabeçalho com os dois logos, data/hora da geração, tabelas em A4 horizontal, títulos de colunas repetidos nas páginas seguintes e numeração. Quando ambos são escolhidos, os jogos começam em uma nova página. Word é editável; PDF está pronto para compartilhar e imprimir.
+
+`documents.php` monta somente os campos públicos e gera WordprocessingML com imagens incorporadas. `public/exportar.php?format=pdf` retorna o retrato público em JSON para `public/export.js`, que gera o PDF no navegador usando **pdfmake 0.3.11** e fontes Roboto locais. Inclua **toda a pasta `public/vendor/pdfmake/`** ao publicar. As licenças MIT e Apache 2.0 dos componentes acompanham os arquivos; a licença MIT do projeto permanece. Não há CDN, envio de dados para terceiros, Composer ou tarefas agendadas. PDF exige JavaScript; Excel e Word também funcionam pelo formulário em `public/baixar.php` sem JavaScript.
 
 `spreadsheet.php` gera SpreadsheetML e o pacote ZIP em memória, sem exigir ZipArchive, Composer, acesso a serviços externos ou arquivos temporários no servidor. A exportação inclui apenas campos esportivos públicos, sem e-mails, credenciais, auditoria ou assinaturas. O horário de geração usa o fuso configurado. Não há atualização automática do arquivo baixado.
 
 O teste HTTP valida o download anônimo, as duas abas e todas as linhas. `tests/spreadsheet.php` produz uma amostra binária fictícia na saída padrão para leitores de XLSX validarem acentos, segurança de texto, datas, empates e jogos pendentes; não depende de banco ou configuração.
+
+O teste HTTP também confere as três seleções de conteúdo, todos os valores do Word contra o retrato público, imagens incorporadas, paginação configurada, parâmetros inválidos e ausência de campos privados. A verificação visual usa apenas arquivos fictícios.
+
+No ambiente Windows de desenvolvimento, após `python painel_php/tests/audit_http.py`, `python scripts/check_exports_browser.py` usa Chrome, os módulos Python `websockets` e `PyMuPDF` e as amostras em `previews/`. Confere o modal em diferentes larguras, teclado, falhas de download, PDFs paginados, logos e texto dentro das páginas. Essas ferramentas de teste não são necessárias na hospedagem.

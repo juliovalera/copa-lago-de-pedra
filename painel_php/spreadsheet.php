@@ -44,7 +44,7 @@ function spreadsheetZip(array $files): string
     return $body.$directory.pack('VvvvvVVv',0x06054b50,0,0,count($files),count($files),strlen($directory),strlen($body),0);
 }
 
-function competitionSpreadsheet(array $data, DateTimeImmutable $generated): string
+function competitionSpreadsheet(array $data, DateTimeImmutable $generated, string $content='all'): string
 {
     $stamp='Gerado em '.$generated->format('d/m/Y H:i:s').' ('.$generated->getTimezone()->getName().') — competição completa; cópia do momento do download.';
     $ranking=[];
@@ -59,7 +59,7 @@ function competitionSpreadsheet(array $data, DateTimeImmutable $generated): stri
     $styles=<<<'XML'
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="4"><font><sz val="11"/><name val="Calibri"/><color rgb="FF202D29"/></font><font><b/><sz val="14"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font><font><sz val="10"/><name val="Calibri"/><color rgb="FF606E66"/></font><font><b/><sz val="11"/><name val="Calibri"/><color rgb="FF123E32"/></font></fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF123E32"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE4EFD9"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2D5"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="10"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="10" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFill="1" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>
 XML;
-    return spreadsheetZip([
+    $files=[
         '[Content_Types].xml'=>'<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>',
         '_rels/.rels'=>'<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
         'xl/workbook.xml'=>'<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView/></bookViews><sheets><sheet name="Classificação" sheetId="1" r:id="rId1"/><sheet name="Jogos e resultados" sheetId="2" r:id="rId2"/></sheets></workbook>',
@@ -67,5 +67,13 @@ XML;
         'xl/styles.xml'=>$styles,
         'xl/worksheets/sheet1.xml'=>spreadsheetSheet('I Copa Lago de Pedra — Classificação',$stamp,'Critérios: PG → V → SG → GM. Vitória: 3 pontos; empate: 1 ponto. Aproveitamento vazio: ainda sem jogos.',['Posição','Botonista','PG','J','V','E','D','GM','GS','SG','Aproveitamento'],$ranking,[10,36,9,9,9,9,9,9,9,9,19]),
         'xl/worksheets/sheet2.xml'=>spreadsheetSheet('I Copa Lago de Pedra — Jogos e resultados',$stamp,'Placar vazio: sem resultado registrado. Data vazia: não informada. Inclui todos os jogos, sem aplicar filtros da tela.',['Rodada','Jogo','Etapa','Jogador A','Gols A','Gols B','Jogador B','Data da partida','Situação'],$games,[10,10,14,36,10,10,36,19,20]),
-    ]);
+    ];
+    if ($content==='ranking' || $content==='games') {
+        $remove=$content==='ranking'?2:1;
+        unset($files['xl/worksheets/sheet'.$remove.'.xml']);
+        $files['[Content_Types].xml']=preg_replace('~<Override PartName="/xl/worksheets/sheet'.$remove.'\.xml"[^>]*/>~','',$files['[Content_Types].xml']);
+        $files['xl/workbook.xml']=preg_replace('~<sheet name="[^"]*" sheetId="'.$remove.'"[^>]*/>~','',$files['xl/workbook.xml']);
+        $files['xl/_rels/workbook.xml.rels']=preg_replace('~<Relationship Id="rId'.$remove.'"[^>]*/>~','',$files['xl/_rels/workbook.xml.rels']);
+    }
+    return spreadsheetZip($files);
 }

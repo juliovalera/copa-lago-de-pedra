@@ -33,6 +33,7 @@
 !/site/liga_mogiana_256.png
 /scripts/*
 !/scripts/check_publication.py
+!/scripts/check_exports_browser.py
 **/*.sqlite*
 **/*.db
 **/*.zip
