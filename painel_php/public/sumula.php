@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $link = dailyRefereeLink((int) $game['id'], $matchDate);
+            if (($_POST['mode'] ?? '') === 'digital') { header('Location: sumula-digital.php?game=' . (int)$game['id'] . '&date=' . rawurlencode($matchDate)); exit; }
         } catch (InvalidArgumentException $exception) {
             http_response_code(422);
             $error = $exception->getMessage();
@@ -43,7 +44,7 @@ if (!$link): ?>
 <?php if ($error): ?><p class="error" role="alert"><?= h($error) ?></p><?php endif ?>
 <form class="user-form" method="post" action="sumula.php?game=<?= h($game['id']) ?>"><input type="hidden" name="csrf" value="<?= h($csrf) ?>">
 <label for="match-date">Data do jogo</label><input id="match-date" type="date" name="match_date" min="<?= h(date('Y-m-d')) ?>" value="<?= h($matchDate) ?>" aria-describedby="date-help" required>
-<button class="button button-primary" type="submit">Gerar súmula para impressão</button></form>
+<button class="button button-primary" type="submit" name="mode" value="print">Imprimir súmula com QR Code</button><small>Preencha e assine no papel. O QR continua disponível para registrar o placar.</small><button class="button button-outline-dark" type="submit" name="mode" value="digital">Preencher e assinar no celular</button><small>Salve um rascunho e colete as três assinaturas na tela antes de finalizar.</small></form>
 <p><a href="admin.php">Voltar ao painel</a></p></section></main></body></html>
 <?php exit; endif;
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';

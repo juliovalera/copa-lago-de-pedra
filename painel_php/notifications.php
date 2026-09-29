@@ -69,7 +69,7 @@ function queuePlayerNotification(string $eventId, string $action, string $source
             }
         }
     }
-    if ($source !== 'QR Code' && !$playerInvite && !$user && !isMasterAdmin()) return;
+    if (!in_array($source, ['QR Code','Súmula digital'], true) && !$playerInvite && !$user && !isMasterAdmin()) return;
     $organizerEmail = organizerNotificationEmail();
     if (!filter_var($organizerEmail, FILTER_VALIDATE_EMAIL)) return;
     db()->prepare("INSERT INTO email_notifications(event_id, recipient) VALUES (?, ?) ON CONFLICT(event_id,recipient) DO UPDATE SET audience=CASE WHEN audience='account' THEN 'account' ELSE 'organizer' END")->execute([$eventId, $organizerEmail]);

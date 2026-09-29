@@ -169,6 +169,13 @@ function restoreAuditedBackup(string $source, string $safety): void
                     $pdo->exec("UPDATE main.users SET role = CASE WHEN player_id IS NULL THEN 'admin' ELSE 'player' END");
                 }
             }
+            if (in_array('digital_sheets', $tables, true)) {
+                $pdo->exec("INSERT INTO main.digital_sheets(game_id,match_date,revision,status,data_json,signatures_json,updated_by,updated_at,finalized_at)
+                    SELECT game_id,match_date,revision,status,data_json,signatures_json,updated_by,updated_at,finalized_at FROM restoration.digital_sheets AS source
+                    WHERE NOT EXISTS (SELECT 1 FROM main.digital_sheets AS current WHERE current.game_id=source.game_id AND current.status='final')
+                    ON CONFLICT(game_id,match_date) DO UPDATE SET status=excluded.status,data_json=excluded.data_json,signatures_json=excluded.signatures_json,updated_by=excluded.updated_by,updated_at=excluded.updated_at,finalized_at=excluded.finalized_at,revision=excluded.revision
+                    WHERE digital_sheets.status='draft' AND excluded.status='final'");
+            }
             if (in_array('audit_log', $tables, true)) $pdo->exec('INSERT OR IGNORE INTO main.audit_log SELECT * FROM restoration.audit_log');
             auditRecord('Backup restaurado', 'Banco de dados', [], ['arquivo'=>basename($source), 'seguranca'=>basename($safety)], 'Painel', $actor);
         });

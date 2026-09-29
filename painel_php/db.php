@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 require_once __DIR__ . '/audit.php';
+require_once __DIR__ . '/digital_sheet.php';
 require_once __DIR__ . '/version.php';
 require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/login_security.php';
@@ -101,6 +102,7 @@ function initialiseDatabase(): void
     $pdo->exec('CREATE TRIGGER IF NOT EXISTS games_result_revision AFTER UPDATE OF score_a, score_b, played_at ON games
         WHEN OLD.score_a IS NOT NEW.score_a OR OLD.score_b IS NOT NEW.score_b OR OLD.played_at IS NOT NEW.played_at
         BEGIN UPDATE games SET result_revision = OLD.result_revision + 1 WHERE id = NEW.id; END');
+    initialiseDigitalSheets();
     initialiseAudit();
     initialiseNotifications();
     initialiseLoginSecurity();

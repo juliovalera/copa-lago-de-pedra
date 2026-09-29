@@ -209,3 +209,15 @@ A geração local de QR usa [QR Code Generator, de Kazuhiko Arase](painel_php/pu
 ### Proteção contra edições simultâneas
 
 Desde a versão 1.40, o painel verifica a revisão do jogo antes de salvar placar, data ou remoção. Se outro acesso ou QR atualizou o resultado, o formulário antigo é recusado e o usuário deve conferir os dados atuais antes de tentar novamente. A migração adiciona `games.result_revision`; mudanças reais incrementam a revisão dentro da mesma transação. Conflitos não geram aviso de resultado nem alteram a classificação.
+
+### Súmula digital (1.41)
+
+A geração oferece impressão com QR ou preenchimento no celular. O QR também abre a ficha digital na data da partida. O rascunho guarda campos; a finalização exige gols dos dois tempos, horário, nome do árbitro, concordância e três assinaturas desenhadas. Alterar dados limpa as assinaturas no navegador.
+
+Os traços são validados no servidor e guardados em `digital_sheets`, no próprio SQLite. Não há upload de imagens, serviço externo ou agendamento. O salvamento exige internet. Ficha final, placar, consumo dos QR e auditoria são gravados atomicamente; avisos do resultado seguem após o commit. Controle de revisão impede sobrescrita de rascunhos e resultados.
+
+Documentos finalizados são imutáveis. Correções administrativas do placar preservam o original. Administradores e contas dos participantes consultam as fichas no painel; o portador do QR recebe acesso ao comprovante na sessão em que finalizou. As assinaturas não são publicadas nem incluídas nos e-mails ou logs. O desenho registra concordância, sem autenticar a identidade do signatário.
+
+O botão de PDF usa a impressão nativa do navegador (opção Salvar como PDF do dispositivo). Os backups SQLite incluem as fichas e a restauração mantém documentos atuais, importando os ausentes sem substituir originais. Não existe editor de fichas assinadas.
+
+Teste isolado: `php painel_php/tests/digital_sheets.php`; os testes HTTP também cobrem a escolha dos formatos, CSRF, acesso privado e finalização.

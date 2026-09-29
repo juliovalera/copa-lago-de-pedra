@@ -1,6 +1,7 @@
 """Testa rotas reais numa cópia temporária, sem banco real nem envio de e-mail."""
 from pathlib import Path
 import http.cookiejar
+import json
 from datetime import date
 import hashlib
 import re
@@ -23,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
     shutil.copytree(ROOT/'site', root/'site')
     app = root/'painel_php'
     (app/'public').mkdir(parents=True)
-    for name in ('db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
+    for name in ('digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
         shutil.copyfile(ROOT/'painel_php'/name, app/name)
     for path in (ROOT/'painel_php/public').glob('*'):
         if path.is_file(): shutil.copyfile(path, app/'public'/path.name)
@@ -56,12 +57,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.40' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.41' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.40' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.41' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.40' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.41' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -71,7 +72,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.40 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.41 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -332,6 +333,37 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         get(normal_admin,'admin.php',{'csrf':csrf(conflict),'result_token':result_token(conflict),'game_id':1,'score_a':8,'score_b':4,'played_at':'2026-09-20'})
         assert db.execute('SELECT score_a FROM games WHERE id=1').fetchone()[0]==8
         print('OK: duas sessoes preservam resultado mais recente e permitem salvar apos conferir')
+
+        # Both sheet formats remain available; digital submission uses the same game.
+        status,choice,_=get(admin,'sumula.php?game=648')
+        assert status==200 and 'name="mode" value="print"' in choice and 'name="mode" value="digital"' in choice
+        status,digital,url=get(admin,'sumula.php?game=648',{'csrf':csrf(choice),'match_date':date.today().isoformat(),'mode':'digital'})
+        assert status==200 and 'digital-form' in digital and 'sumula-digital.php' in url
+        assert get(guest,'sumula-digital.php?game=648&date='+date.today().isoformat())[0]==403
+        link=db.execute('SELECT token FROM referee_links WHERE game_id=648').fetchone()[0]
+        path='sumula-digital.php?t='+link
+        status,digital,_=get(guest,path)
+        assert status==200
+        def hidden(html,name): return re.search('name="'+name+'" value="([^\"]*)"',html).group(1)
+        inputs=dict(venue='Local ficticio',time='10:00',table='2',referee='Arbitro de teste',notes='Teste de assinatura',first_a='1',first_b='0',second_a='2',second_b='1')
+        assert get(guest,path,dict(inputs,csrf='invalid',mode='draft',revision=0,result_token=hidden(digital,'result_token')))[0]==422
+        status,draft,_=get(guest,path,dict(inputs,csrf=csrf(digital),mode='draft',revision=0,result_token=hidden(digital,'result_token')))
+        assert status==200 and db.execute('SELECT score_a FROM games WHERE id=648').fetchone()[0] is None
+        fixture=draft.replace('href="admin.css"','href="../painel_php/public/admin.css"').replace('href="digital.css?', 'href="../painel_php/public/digital.css?').replace('src="digital.js?', 'src="../painel_php/public/digital.js?')
+        (ROOT/'previews/digital-form.html').write_text(fixture,encoding='utf-8')
+        sig=json.dumps([[[10+i*20,50+i%2*30] for i in range(12)]])
+        status,receipt,_=get(guest,path,dict(inputs,csrf=csrf(draft),mode='final',revision=hidden(draft,'revision'),result_token=hidden(draft,'result_token'),consent=1,signature_a=sig,signature_b=sig,signature_referee=sig))
+        assert status==200 and '<polyline' in receipt
+        assert db.execute('SELECT score_a,score_b FROM games WHERE id=648').fetchone()==(3,1)
+        doc=db.execute('SELECT id FROM digital_sheets WHERE game_id=648').fetchone()[0]
+        assert get(client(),'sumula-digital.php?document='+str(doc))[0]==403
+        assert get(client(),path)[0]==403
+        assert get(normal_admin,'sumula-digital.php?document='+str(doc))[0]==200
+        assert get(admin,'sumulas-digitais.php')[0]==200
+        fixture=receipt.replace('href="admin.css"','href="../painel_php/public/admin.css"').replace('href="digital.css?', 'href="../painel_php/public/digital.css?').replace('src="digital.js?', 'src="../painel_php/public/digital.js?')
+        (ROOT/'previews/digital-final.html').write_text(fixture,encoding='utf-8')
+        assert 'Resultado já enviado' in get(client(),'arbitro.php?t='+link)[1]
+        print('OK: escolha papel/digital, CSRF, rascunho, assinaturas, finalizacao e consulta privada HTTP')
 
         db.close()
     finally:

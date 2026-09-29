@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.41 — 29/09/2026
+
+- Escolha entre imprimir a súmula com QR e preencher/assinar no celular; QR impresso também abre o preenchimento digital.
+- Rascunho com local, horário, mesa, árbitro, gols de cada tempo e observações.
+- Finalização na data do jogo exige três assinaturas e conferência; registra ficha e resultado na mesma transação e bloqueia reenvios.
+- Fichas assinadas imutáveis, consulta privada no painel e impressão para salvar em PDF pelo dispositivo. Correções no painel preservam o original.
+- Assinaturas ficam no SQLite, sem serviços externos; backups as incluem e a restauração preserva documentos já guardados.
+
 ## 1.40 — 29/09/2026
 
 - Salvamento do painel confere a revisão do resultado exibido e bloqueia formulários desatualizados, preservando alterações feitas por outras pessoas ou pelo QR.
