@@ -224,3 +224,11 @@ O botão de PDF usa a impressão nativa do navegador (opção Salvar como PDF do
 Teste isolado: `php painel_php/tests/digital_sheets.php`; os testes HTTP também cobrem a escolha dos formatos, CSRF, acesso privado e finalização.
 
 O teste `painel_php/tests/run.php` funciona somente pela linha de comando e prepara sua própria configuração temporária, banco em memória e dados fictícios. Não carrega o `config.php` da instalação e não envia e-mails. As cópias automáticas anteriores à restauração podem ser baixadas no painel, assim como os backups comuns.
+
+### Exportação Excel (1.45)
+
+Na área pública PHP, **Baixar Excel** acessa `public/exportar.php`. O arquivo `.xlsx` inclui **Classificação** e **Jogos e resultados**, sempre completos e com o mesmo retrato do banco, independentemente dos filtros da tela. Datas e percentuais são valores tipados, nomes são texto literal (nunca fórmulas), e placares pendentes ficam vazios.
+
+`spreadsheet.php` gera SpreadsheetML e o pacote ZIP em memória, sem exigir ZipArchive, Composer, acesso a serviços externos ou arquivos temporários no servidor. A exportação inclui apenas campos esportivos públicos, sem e-mails, credenciais, auditoria ou assinaturas. O horário de geração usa o fuso configurado. Não há atualização automática do arquivo baixado.
+
+O teste HTTP valida o download anônimo, as duas abas e todas as linhas. `tests/spreadsheet.php` produz uma amostra binária fictícia na saída padrão para leitores de XLSX validarem acentos, segurança de texto, datas, empates e jogos pendentes; não depende de banco ou configuração.

@@ -2,6 +2,9 @@
 from pathlib import Path
 import http.cookiejar
 import json
+import io
+import zipfile
+import xml.etree.ElementTree as ET
 from datetime import date
 import hashlib
 import re
@@ -24,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
     shutil.copytree(ROOT/'site', root/'site')
     app = root/'painel_php'
     (app/'public').mkdir(parents=True)
-    for name in ('digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
+    for name in ('spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
         shutil.copyfile(ROOT/'painel_php'/name, app/name)
     for path in (ROOT/'painel_php/public').glob('*'):
         if path.is_file(): shutil.copyfile(path, app/'public'/path.name)
@@ -57,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.44' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.45' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.44' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.45' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.44' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.45' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -72,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.44 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.45 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -373,6 +376,29 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         (ROOT/'previews/digital-final.html').write_text(fixture,encoding='utf-8')
         assert 'Resultado já enviado' in get(client(),'arbitro.php?t='+link)[1]
         print('OK: escolha papel/digital, CSRF, rascunho, assinaturas, finalizacao e consulta privada HTTP')
+
+        # Public workbook exports every row, ignoring page filters, without private data.
+        with guest.open(base+'exportar.php?q=nonexistent&status=pending') as response:
+            assert response.headers['Content-Type']=='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            assert '.xlsx' in response.headers['Content-Disposition']
+            workbook=response.read()
+        with zipfile.ZipFile(io.BytesIO(workbook)) as archive:
+            assert archive.testzip() is None
+            ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+            sheets=ET.fromstring(archive.read('xl/workbook.xml')).findall('s:sheets/s:sheet',ns)
+            assert [s.attrib['name'] for s in sheets]==['Classificação','Jogos e resultados']
+            for name,count in [('sheet1.xml',30),('sheet2.xml',654)]:
+                xml=ET.fromstring(archive.read('xl/worksheets/'+name))
+                assert len(xml.findall('s:sheetData/s:row',ns))==count
+                assert xml.find('s:autoFilter',ns) is not None
+                assert xml.find('s:sheetViews/s:sheetView/s:pane',ns).attrib['ySplit']=='4'
+            assert not any('externalLink' in name for name in archive.namelist())
+            assert not any(b'@example.invalid' in archive.read(name) for name in archive.namelist())
+        (ROOT/'previews/export-full.xlsx').write_bytes(workbook)
+        payload=get(guest,'data.php')[1]
+        (ROOT/'previews/export-full.json').write_text(payload.removeprefix('window.COPA_DATA = ').removesuffix(';'),encoding='utf-8')
+        assert 'href="exportar.php"' in get(guest,'index.php')[1]
+        print('OK: Excel publico com 26 classificados e 650 jogos, duas abas, filtros e sem dados privados')
 
         db.close()
     finally:

@@ -224,6 +224,7 @@
   }
   window.addEventListener('hashchange', route);
   $('#download').addEventListener('click', () => {
+    if ($('#download').tagName === 'A') return; // PHP downloads the complete workbook.
     const rows = [['Posição (PG, V, SG, GM)','Jogador','J','V','E','D','PG','GM','GS','SG','Aproveitamento','Critérios'], ...currentPlayers().map(p => [p.position,p.name,p.played,p.wins,p.draws,p.losses,p.points,p.goalsFor,p.goalsAgainst,p.goalDifference,formatPercentage(p),'PG > V > SG > GM'])];
     const cell = value => { let text = String(value); if (/^[=+@\-\t\r]/.test(text)) text="'"+text; return '"'+text.replace(/"/g,'""')+'"'; };
     const blob = new Blob(['\uFEFF'+rows.map(row=>row.map(cell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8;'});

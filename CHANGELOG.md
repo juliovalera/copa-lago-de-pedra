@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 1.45 — 29/09/2026
+
+- Botão público Baixar Excel gera arquivo `.xlsx` com abas Classificação e Jogos e resultados, sem aplicar filtros da tela.
+- Cabeçalhos destacados e fixos, filtros, datas e aproveitamento como valores de planilha, com data/hora da geração.
+- As duas abas usam a mesma consulta consistente ao banco. Placares pendentes permanecem vazios; empates em zero a zero preservam os zeros.
+- Exporta somente informações esportivas públicas, com nomes tratados como texto e sem dependências extras na hospedagem.
+
 ## 1.44 — 29/09/2026
 
 - Download das cópias com sufixo `-antes-da-restauracao.sqlite` liberado no painel, mantendo validação de nomes e acesso administrativo.
