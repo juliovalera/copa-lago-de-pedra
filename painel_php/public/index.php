@@ -28,7 +28,10 @@ $html = preg_replace_callback(
     $html
 );
 $html = str_replace('Fonte: tabela de jogos da competição', 'Fonte: resultados registrados no sistema da competição.', $html);
-$html = str_replace('<button class="secondary" id="download">↓ Baixar tabela</button>', '<a class="secondary" id="download" href="baixar.php" aria-haspopup="dialog" aria-controls="export-dialog">↓ Baixar tabela</a>', $html);
+$downloadLink = '<a class="secondary" data-export-open href="baixar.php" aria-haspopup="dialog" aria-controls="export-dialog">↓ Baixar tabela</a>';
+$html = str_replace('<button class="secondary" id="download">↓ Baixar tabela</button>', str_replace('data-export-open', 'id="download" data-export-open', $downloadLink), $html);
+$gamesHeading = '<div class="panel-heading"><div><h2 id="games-title">Tabela de jogos</h2><p>Turno e returno. Consulte os placares e os confrontos de cada botonista.</p></div>';
+$html = str_replace($gamesHeading.'</div>', $gamesHeading.$downloadLink.'</div>', $html);
 $html = str_replace('</head>', exportAssets().'</head>', $html);
 $html = str_replace('</body>', '<dialog class="export-dialog" id="export-dialog" aria-labelledby="export-title"><div class="dialog-top"><h2 id="export-title">Baixar tabela</h2><button class="icon-button" type="button" data-export-close aria-label="Fechar opções de download" autofocus>×</button></div>'.exportForm().'</dialog></body>', $html);
 $html = str_replace('</footer>', '<a class="panel-access" href="admin.php">Acesso ao painel</a><a class="panel-access" href="guia.php">Guia de uso</a>' . copaVersionButton() . '</footer>', $html);

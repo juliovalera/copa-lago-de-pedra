@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.47 — 30/09/2026
+
+- Botão Baixar tabela disponível também no cabeçalho da aba Jogos, com o mesmo seletor de Excel, Word, PDF e conteúdo da aba Classificação.
+- Os dois acessos compartilham a mesma janela, com navegação por teclado e retorno do foco ao botão utilizado.
+
 ## 1.46 — 29/09/2026
 
 - Baixar tabela oferece Excel, Word e PDF, com escolha entre classificação, jogos/resultados ou ambos, sem filtros da tela.

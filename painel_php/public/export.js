@@ -2,9 +2,9 @@
 (() => {
   'use strict';
   const dialog = document.querySelector('#export-dialog');
-  const trigger = document.querySelector('#download');
-  if (dialog && trigger && typeof dialog.showModal === 'function') {
-    trigger.addEventListener('click', event => { event.preventDefault(); dialog.showModal(); });
+  const triggers = document.querySelectorAll('[data-export-open]');
+  if (dialog && typeof dialog.showModal === 'function') {
+    triggers.forEach(trigger => trigger.addEventListener('click', event => { event.preventDefault(); dialog.showModal(); }));
     dialog.querySelector('[data-export-close]').addEventListener('click', () => dialog.close());
   }
   let pdfLibrary;

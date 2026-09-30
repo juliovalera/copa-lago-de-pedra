@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -63,7 +64,17 @@ try:
         call('Input.dispatchKeyEvent',dict(type='keyDown',key='Escape',code='Escape',windowsVirtualKeyCode=27))
         call('Input.dispatchKeyEvent',dict(type='keyUp',key='Escape',code='Escape',windowsVirtualKeyCode=27))
         assert js("!document.querySelector('#export-dialog').open && document.activeElement.id==='download'")
-        js("document.querySelector('#download').click();document.querySelector('#export-format').value='pdf'")
+        js("document.querySelector('[data-page=jogos]').click()")
+        for width in [320,390,768,1280]:
+            call('Emulation.setDeviceMetricsOverride',dict(width=width,height=900,deviceScaleFactor=1,mobile=False))
+            assert js("(()=>{const b=document.querySelector('#jogos [data-export-open]');const r=b.getBoundingClientRect();return !document.querySelector('#jogos').hidden && r.width>0 && r.left>=0 && r.right<=innerWidth;})()"),width
+        js("document.querySelector('#jogos [data-export-open]').focus();document.querySelector('#jogos [data-export-open]').click()")
+        assert js("document.querySelector('#export-dialog').open && document.querySelectorAll('#export-format option').length===3")
+        js("document.querySelector('[data-export-close]').click()")
+        assert js("document.activeElement===document.querySelector('#jogos [data-export-open]')")
+        print('OK: download visible in Games at 320/390/768/1280px; both triggers open the same dialog and restore focus')
+        if '--ui-only' in sys.argv: sys.exit(0)
+        js("document.querySelector('#jogos [data-export-open]').click();document.querySelector('#export-format').value='pdf'")
         for selection in ['ranking','games','all']:
             js(f"document.querySelector('#export-content').value='{selection}';document.querySelector('.export-form').requestSubmit()")
             for _ in range(180):

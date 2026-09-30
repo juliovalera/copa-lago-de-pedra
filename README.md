@@ -227,7 +227,7 @@ O teste `painel_php/tests/run.php` funciona somente pela linha de comando e prep
 
 ### Downloads em Excel, Word e PDF (1.46)
 
-Na área pública PHP, **Baixar tabela** abre a escolha de formato e conteúdo: **Classificação**, **Jogos e resultados** ou **ambos**. O download usa o mesmo retrato do banco, independentemente dos filtros da tela. Excel mantém abas separadas, datas e percentuais tipados e nomes como texto literal (nunca fórmulas). Placares pendentes ficam vazios; 0 × 0 permanece um empate registrado.
+Nas abas **Classificação** e **Jogos** da área pública PHP, **Baixar tabela** abre a escolha de formato e conteúdo: **Classificação**, **Jogos e resultados** ou **ambos**. O download usa o mesmo retrato do banco, independentemente dos filtros da tela. Excel mantém abas separadas, datas e percentuais tipados e nomes como texto literal (nunca fórmulas). Placares pendentes ficam vazios; 0 × 0 permanece um empate registrado.
 
 Word (`.docx`) e PDF têm cabeçalho com os dois logos, data/hora da geração, tabelas em A4 horizontal, títulos de colunas repetidos nas páginas seguintes e numeração. Quando ambos são escolhidos, os jogos começam em uma nova página. Word é editável; PDF está pronto para compartilhar e imprimir.
 
