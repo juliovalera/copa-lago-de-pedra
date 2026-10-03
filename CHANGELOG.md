@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.55 — 03/10/2026
+
+- Texto dos links de retorno reduzido para "Voltar", mantendo o destino na área pública e a descrição completa para leitores de tela.
+
 ## 1.54 — 03/10/2026
 
 - Botão superior do canal de denúncias e link compartilhado do rodapé passam a informar "Voltar à área pública do campeonato", esclarecendo que são navegação, sem indicar publicidade do relato.
