@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.50 — 03/10/2026
+
+- Texto do formulário de denúncias simplificado: orienta o preenchimento e a confirmação do e-mail, sem detalhes desnecessários sobre códigos por telefone. Guia de uso atualizado.
+
 ## 1.49 — 03/10/2026
 
 - Canal reservado de denúncias sem conta: nome, e-mail, telefone com DDD e relato obrigatórios. Confirmação por e-mail em 48 horas antes do encaminhamento.
