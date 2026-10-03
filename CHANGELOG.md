@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.51 — 03/10/2026
+
+- Rodapé do canal de denúncias com links em formato de botões, espaçamento, contraste e organização vertical no celular.
+
 ## 1.50 — 03/10/2026
 
 - Texto do formulário de denúncias simplificado: orienta o preenchimento e a confirmação do e-mail, sem detalhes desnecessários sobre códigos por telefone. Guia de uso atualizado.
