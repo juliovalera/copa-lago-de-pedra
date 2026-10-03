@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.52 — 03/10/2026
+
+- Links de retorno no topo do canal de denúncias e da administração seguem o mesmo estilo dos botões do rodapé, com contraste e área de toque ampliada.
+
 ## 1.51 — 03/10/2026
 
 - Rodapé do canal de denúncias com links em formato de botões, espaçamento, contraste e organização vertical no celular.
