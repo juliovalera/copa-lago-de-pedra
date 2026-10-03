@@ -151,12 +151,21 @@ function renamePlayer(int $id, string $name, string $expectedName): void
 function restoreAuditedBackup(string $source, string $safety): void
 {
     if (!isMasterAdmin()) throw new RuntimeException('Somente o administrador máximo pode restaurar backups.');
+    require_once __DIR__.'/complaints.php';
+    initialiseComplaints();
     $pdo = db();
     $actor = auditActor();
     $pdo->prepare('ATTACH DATABASE ? AS restoration')->execute([$source]);
     try {
         auditedTransaction(static function () use ($pdo, $source, $safety, $actor): void {
             $tables = $pdo->query("SELECT name FROM restoration.sqlite_master WHERE type='table'")->fetchAll(PDO::FETCH_COLUMN);
+            // Preserve current cases. Import complete missing cases from the backup only.
+            if (in_array('complaints',$tables,true)) {
+                foreach (['complaint_events','complaint_files','complaint_mail'] as $table) {
+                    if (in_array($table,$tables,true)) $pdo->exec('INSERT OR IGNORE INTO main.'.$table.' SELECT * FROM restoration.'.$table.' WHERE complaint_id NOT IN (SELECT id FROM main.complaints)');
+                }
+                $pdo->exec('INSERT OR IGNORE INTO main.complaints SELECT * FROM restoration.complaints');
+            }
             foreach (['user_invites','referee_links','users','games','players'] as $table) $pdo->exec('DELETE FROM main.' . $table);
             foreach (['players','games','users','referee_links','user_invites'] as $table) {
                 if (!in_array($table, $tables, true)) continue;

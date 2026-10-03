@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.49 — 03/10/2026
+
+- Canal reservado de denúncias sem conta: nome, e-mail, telefone com DDD e relato obrigatórios. Confirmação por e-mail em 48 horas antes do encaminhamento.
+- Protocolo e acompanhamento por link reservado de 90 dias; esclarecimentos e anexos privados (PDF/JPG/PNG, dois de 2 MB por envio, oito por caso).
+- Administração solicita defesa com prazo, compartilha evidências explicitamente e registra conclusão fundamentada ou arquivamento sem punição. Nenhum placar ou privilégio é alterado automaticamente.
+- Avisos aos administradores ativos e contato da organização, falhas visíveis e reenvio manual. Sem tarefas agendadas.
+- Proteções de acesso, CSRF, limites de envio e histórico. Auditoria geral sem relatos, contatos ou tokens. Backups preservam casos atuais e importam os ausentes.
+
 ## 1.48 — 03/10/2026
 
 - Filtros Botonista e Adversário na consulta pública e no painel, combinados com rodada e situação.

@@ -244,3 +244,21 @@ No ambiente Windows de desenvolvimento, após `python painel_php/tests/audit_htt
 ### Filtro de confrontos (1.48)
 
 A consulta pública e o painel oferecem Botonista e Adversário. Dois nomes restringem a lista aos confrontos entre ambos, em qualquer ordem, junto aos filtros de rodada e situação. No painel, a busca textual continua disponível e a paginação preserva as seleções. Contas de botonista têm o próprio jogador fixado no servidor, mesmo diante de parâmetros manipulados. Nenhuma migração de banco é necessária. Testes HTTP isolados cobrem os confrontos e permissões; `scripts/check_exports_browser.py --filters-only` verifica os controles no navegador com as amostras fictícias.
+
+### Canal reservado de denúncias (1.49)
+
+O rodapé público oferece **Registrar denúncia** (`public/denuncia.php`). Nome, e-mail, telefone com DDD, identificação dos envolvidos e relato são obrigatórios. Não exige conta. O telefone é apenas contato, sem SMS ou WhatsApp. Confirmar o e-mail prova acesso à caixa, não identidade nem veracidade do relato.
+
+O link de confirmação dura 48 horas e exige confirmação por botão (POST com CSRF); abrir o e-mail não encaminha o caso. Depois, o denunciante recebe protocolo e link reservado por 90 dias. Tokens de acesso são aleatórios, verificados por hash e trocados por acesso de sessão com redirecionamento que remove o token da URL. Páginas privadas usam no-store, no-referrer e noindex. Não compartilhe links de acesso.
+
+Em **Painel > Denúncias**, administradores consultam casos confirmados, solicitam esclarecimentos, convidam a pessoa citada por e-mail e definem prazo (até 90 dias). O texto da defesa é preparado pelo administrador: contatos do denunciante e relato original não são expostos automaticamente. Mensagens podem ser destinadas a uma ou ambas as partes. Anexos ficam com remetente e administração até compartilhamento explícito. Não há promessa de anonimato. A organização deve definir suas regras e evitar que administradores envolvidos conduzam seus próprios casos; o sistema registra autoria, mas não determina impedimentos automaticamente.
+
+Conclusão exige justificativa e defesa recebida ou prazo encerrado; arquivamento sem punição pode ocorrer antes. Não altera resultados nem aplica sanções. Link de defesa expira no prazo concedido; a conclusão também vai por e-mail. Administradores podem renovar o acesso do denunciante ou reenviar convite de defesa com novo prazo enquanto o caso está aberto; links anteriores ficam inválidos.
+
+`complaints.php` cria as quatro tabelas automaticamente no primeiro acesso ao canal. Anexos são BLOBs no SQLite, nunca arquivos públicos. Aceita PDF/JPG/PNG, até dois arquivos de 2 MB por envio e oito por caso. Downloads exigem autorização e usam attachment/nosniff; não há varredura antivírus incorporada. Limite de três registros por contato ou conexão em 24 horas e 20 eventos por caso/hora para mensagens das partes. O IP é registrado por HMAC para esse limite.
+
+SMTP usa configuração existente. Avisos de casos confirmados seguem para contas admin ativas e `notification_email`, com destinatários duplicados removidos. Falhas ficam em `complaint_mail`; o botão de reenvio tenta apenas avisos falhos ou envios parados há mais de dez minutos. Sem agendamentos ou serviços externos. Os corpos de e-mail contêm links reservados: proteja o banco e seus backups. Auditoria geral registra somente a ação, protocolo e autor, sem relato ou tokens.
+
+Backups incluem contatos, relatos, anexos e mensagens. A restauração preserva casos atuais e importa os que só existem no backup, sem sobrescrever os atuais. Administradores com acesso aos backups também têm acesso a esses dados reservados. Não publique bancos ou backups no GitHub. Testes HTTP usam banco e SMTP fictícios.
+
+Após o teste HTTP, `python scripts/check_complaints_browser.py` confere as telas fictícias do canal no Chrome em larguras de 320 a 1280 pixels (Windows, módulo Python websockets).

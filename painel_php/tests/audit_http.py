@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
     shutil.copytree(ROOT/'site', root/'site')
     app = root/'painel_php'
     (app/'public').mkdir(parents=True)
-    for name in ('documents.php', 'export_ui.php', 'spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
+    for name in ('complaints.php', 'documents.php', 'export_ui.php', 'spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
         shutil.copyfile(ROOT/'painel_php'/name, app/name)
     for path in (ROOT/'painel_php/public').glob('*'):
         if path.is_file(): shutil.copyfile(path, app/'public'/path.name)
@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.48' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.49' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.48' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.49' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.48' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.49' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.48 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.49 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -471,6 +471,119 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         (ROOT/'previews/export-data.js').write_text(payload,encoding='utf-8')
         print('OK: Word/PDF publicos, selecao de conteudo nos tres formatos, logos, cabecalhos e campos publicos')
 
+        # Reserved complaints: real routes, isolated database, SMTP stub only.
+        reporter=client(); stranger=client(); defender=client()
+        status,report_form,_=get(reporter,'denuncia.php')
+        assert status==200 and 'name="telefone"' in report_form
+        form_data={'csrf':csrf(report_form),'nome':'Pessoa Fictícia','email':'relator@example.invalid','telefone':'(11) 99999-1111','envolvidos':'Jogador fictício, partida de teste','relato':'Relato fictício suficientemente detalhado para verificar o canal reservado. <script>alert(1)</script>','consentimento':'1','website':''}
+        assert 'telefone com DDD' in get(reporter,'denuncia.php',dict(form_data,telefone='123'))[1]
+        assert db.execute('SELECT COUNT(*) FROM complaints').fetchone()[0]==0
+        assert get(athlete,'denuncias.php')[0]==403
+        def multipart_report(filename,content):
+            from urllib.request import Request
+            boundary='copa-fixture-boundary'
+            parts=[]
+            for key,value in form_data.items(): parts.append((f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n').encode())
+            parts.append((f'--{boundary}\r\nContent-Disposition: form-data; name="anexos[]"; filename="{filename}"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()+content+b'\r\n')
+            parts.append(f'--{boundary}--\r\n'.encode())
+            with reporter.open(Request(base+'denuncia.php',b''.join(parts),{'Content-Type':'multipart/form-data; boundary='+boundary}),timeout=10) as response:return response.read().decode()
+        assert 'Use apenas PDF' in multipart_report('unsafe.php',b'<?php echo "fixture";')
+        assert db.execute('SELECT COUNT(*) FROM complaints').fetchone()[0]==0
+        multipart_report('evidencia.png',(ROOT/'site/lago_de_pedra_256.png').read_bytes())
+        assert db.execute('SELECT COUNT(*) FROM complaint_files').fetchone()[0]==1
+        case=db.execute('SELECT * FROM complaints').fetchone()
+        columns=[r[1] for r in db.execute('PRAGMA table_info(complaints)')]; case=dict(zip(columns,case)); cid=case['id']
+        assert case['status']=='unconfirmed'
+        assert db.execute('SELECT COUNT(*) FROM complaint_mail').fetchone()[0]==1
+        assert 'Relato fictício' not in get(admin,'denuncias.php?case='+cid)[1]
+        mail=db.execute('SELECT body FROM complaint_mail WHERE complaint_id=?',(cid,)).fetchone()[0]
+        token=re.search(r'token=([a-f0-9]{64})',mail)[1]
+        status,confirm_form,_=get(reporter,'denuncia.php?mode=confirm&token='+token)
+        assert db.execute('SELECT status FROM complaints WHERE id=?',(cid,)).fetchone()[0]=='unconfirmed'
+        get(reporter,'denuncia.php?confirm=1',{'csrf':'wrong','action':'confirm'})
+        assert db.execute('SELECT status FROM complaints WHERE id=?',(cid,)).fetchone()[0]=='unconfirmed'
+        status,own_case,_=get(reporter,'denuncia.php?confirm=1',{'csrf':csrf(confirm_form),'action':'confirm'})
+        assert 'Protocolo' in own_case and '&lt;script&gt;' in own_case and '<script>alert(1)</script>' not in own_case
+        assert db.execute('SELECT status FROM complaints WHERE id=?',(cid,)).fetchone()[0]=='analysis'
+        assert get(stranger,'denuncia.php?case='+cid)[0]==403
+        assert get(stranger,'denuncia.php?mode=author&token='+'0'*64)[0]==403
+        assert get(athlete,'denuncias.php?case='+cid)[0]==403
+        author_mail=db.execute("SELECT body FROM complaint_mail WHERE complaint_id=? AND subject LIKE 'Protocolo%'",(cid,)).fetchone()[0]
+        author_token=re.search(r'token=([a-f0-9]{64})',author_mail)[1]
+        assert 'Protocolo' in get(client(),'denuncia.php?mode=author&token='+author_token)[1]
+        assert db.execute("SELECT COUNT(*) FROM complaint_mail WHERE recipient='organizer@example.invalid'").fetchone()[0]==1
+        def case_action(action,**extra):
+            html=get(admin,'denuncias.php?case='+cid)[1]
+            revision=re.search(r'name="revision" value="(\d+)"',html)[1]
+            return get(admin,'denuncias.php?case='+cid,dict(csrf=csrf(html),revision=revision,action=action,**extra))
+        assert 'aguarde a defesa' in case_action('close',justificativa='Justificativa fictícia suficiente para testar.')[1]
+        case_action('invite',email_defesa='defesa@example.invalid',resumo_defesa='Explique os equipamentos utilizados na partida fictícia citada no relato.',prazo=date.today().isoformat())
+        mail=db.execute("SELECT body FROM complaint_mail WHERE recipient='defesa@example.invalid' ORDER BY rowid DESC").fetchone()[0]
+        defense_token=re.search(r'token=([a-f0-9]{64})',mail)[1]
+        status,defense_form,_=get(defender,'denuncia.php?mode=defense&token='+defense_token)
+        assert 'relator@example.invalid' not in defense_form and '99999-1111' not in defense_form and 'Relato fictício' not in defense_form
+        assert 'Explique os equipamentos' in defense_form
+        assert 'Solicitação inválida' in get(admin,'denuncias.php?case='+cid,{'csrf':'invalid','revision':'1','action':'archive'})[1]
+        assert 'Informe uma data válida' in case_action('invite',email_defesa='defesa@example.invalid',resumo_defesa='Um resumo fictício suficientemente longo para convidar novamente.',prazo='2026-02-30')[1]
+        for label,html in [('form',report_form),('defense',defense_form),('admin',get(admin,'denuncias.php?case='+cid)[1])]:
+            for asset in ['admin.css','complaints.css','credits.css','credits.js']:
+                html=html.replace('="'+asset,'="../painel_php/public/'+asset)
+            (ROOT/f'previews/complaint-{label}.html').write_text(html,encoding='utf-8')
+        original_scores=db.execute('SELECT id,score_a,score_b FROM games').fetchall()
+        get(defender,'denuncia.php?case='+cid,{'csrf':csrf(defense_form),'mensagem':'Minha defesa fictícia explica o ocorrido e os equipamentos utilizados.'})
+        assert db.execute('SELECT status FROM complaints WHERE id=?',(cid,)).fetchone()[0]=='answered'
+        assert 'Minha defesa fictícia' not in get(reporter,'denuncia.php?case='+cid)[1]
+        assert 'Minha defesa fictícia' in get(admin,'denuncias.php?case='+cid)[1]
+        # Private attachments are delivered only to the owner/admin until explicitly shared.
+        fid='e'*32
+        db.execute('INSERT INTO complaint_files VALUES (?,?,?,?,?,?)',(fid,cid,'author','evidencia.pdf','application/pdf',b'%PDF-1.4 fixture'))
+        db.commit()
+        assert get(defender,'denuncia.php?case='+cid+'&file='+fid)[0]==404
+        assert get(stranger,'denuncia.php?case='+cid+'&file='+fid)[0]==403
+        case_action('share',file=fid)
+        with defender.open(base+'denuncia.php?case='+cid+'&file='+fid) as response:
+            assert response.headers['Content-Disposition'].startswith('attachment;') and response.read()==b'%PDF-1.4 fixture'
+        # SMTP failure keeps the decision and can be retried without resending accepted notices.
+        (app/'mailer.php').write_text("<?php function smtpSend(...$args): void { throw new RuntimeException('fixture SMTP failure'); }",encoding='utf-8')
+        case_action('close',justificativa='Após conferir a defesa, a organização registra esta conclusão fictícia.')
+        assert db.execute('SELECT status FROM complaints WHERE id=?',(cid,)).fetchone()[0]=='closed'
+        assert db.execute("SELECT COUNT(*) FROM complaint_mail WHERE status='failed'").fetchone()[0]==2
+        sent_attempts=db.execute("SELECT id,attempts FROM complaint_mail WHERE status='sent'").fetchall()
+        (app/'mailer.php').write_text("<?php function smtpSend(...$args): void {}",encoding='utf-8')
+        case_action('retry')
+        assert db.execute("SELECT COUNT(*) FROM complaint_mail WHERE status='failed'").fetchone()[0]==0
+        assert all(db.execute('SELECT attempts FROM complaint_mail WHERE id=?',(i,)).fetchone()[0]==n for i,n in sent_attempts)
+        assert db.execute('SELECT id,score_a,score_b FROM games').fetchall()==original_scores
+        assert 'não recebe novas mensagens' in get(reporter,'denuncia.php?case='+cid,{'csrf':csrf(own_case),'mensagem':'Nova mensagem fictícia depois do encerramento.'})[1]
+        case_action('renew')
+        assert get(reporter,'denuncia.php?case='+cid)[0]==403
+        assert get(client(),'denuncia.php?mode=author&token='+author_token)[0]==403
+        db.execute('UPDATE complaints SET defense_until=? WHERE id=?',(int(time.time())-1,cid));db.commit()
+        assert get(defender,'denuncia.php?case='+cid)[0]==403
+        assert get(client(),'denuncia.php?mode=defense&token='+defense_token)[0]==403
+        assert token not in str(db.execute('SELECT * FROM audit_log').fetchall())
+        for n in range(2): get(reporter,'denuncia.php',dict(form_data,email=f'other{n}@example.invalid'))
+        assert 'Limite de três' in get(reporter,'denuncia.php',dict(form_data,email='fourth@example.invalid'))[1]
+        # Old backup restore keeps current complaints and their original evidence.
+        status,backup_form,_=get(admin,'backup.php')
+        existing_backup=db.execute('SELECT COUNT(*) FROM complaints').fetchone()[0]
+        get(admin,'backup.php',{'csrf':csrf(backup_form),'action':'restore','backup_name':backup_name})
+        assert db.execute('SELECT COUNT(*) FROM complaints').fetchone()[0]==existing_backup
+        assert db.execute('SELECT bytes FROM complaint_files WHERE id=?',(fid,)).fetchone()[0]==b'%PDF-1.4 fixture'
+        # Restore an absent case, including its messages, attachments and notices.
+        case_backup='copa-lago-de-pedra-20990101-010101.sqlite'
+        db.execute('VACUUM INTO ?', (str(app/'backups'/case_backup),))
+        for table in ['complaint_events','complaint_files','complaint_mail']: db.execute('DELETE FROM '+table+' WHERE complaint_id=?',(cid,))
+        db.execute('DELETE FROM complaints WHERE id=?',(cid,));db.commit()
+        # Safety backup names have one-second precision; these two restores are intentionally sequential.
+        time.sleep(1.05)
+        backup_form=get(admin,'backup.php')[1]
+        _,restored_case_html,_=get(admin,'backup.php',{'csrf':csrf(backup_form),'action':'restore','backup_name':case_backup})
+        assert db.execute('SELECT status FROM complaints WHERE id=?',(cid,)).fetchone(),restored_case_html[-5000:]
+        assert db.execute('SELECT status FROM complaints WHERE id=?',(cid,)).fetchone()[0]=='closed'
+        assert db.execute('SELECT bytes FROM complaint_files WHERE id=?',(fid,)).fetchone()[0]==b'%PDF-1.4 fixture'
+        assert db.execute('SELECT COUNT(*) FROM complaint_mail WHERE complaint_id=?',(cid,)).fetchone()[0]>0
+        print('OK: canal reservado, confirmacao POST, privacidade, defesa, prazo, anexos, SMTP/reenvio, revogacao, limites e backup; nenhum placar alterado')
         db.close()
     finally:
         if 'db' in locals(): db.close()
