@@ -129,7 +129,7 @@
     const fields = [['Pontos',p.points],['Jogos',p.played],['Aproveitamento',formatPercentage(p)],['Vitórias',p.wins],['Empates',p.draws],['Derrotas',p.losses],['Gols marcados',p.goalsFor],['Gols sofridos',p.goalsAgainst],['Saldo de gols',signed(p.goalDifference)]];
     $('#player-content').innerHTML = `<h2 id="player-title">${escape(p.name)}</h2><p class="player-subtitle">${p.position}º na classificação · ${p.played ? `${p.played} jogos registrados` : 'Ainda sem jogos registrados'}</p><div class="player-stats">${fields.map(([name,value]) => `<div class="player-stat"><strong>${escape(value)}</strong><span>${name}</span></div>`).join('')}</div>${issues.length?`<div class="profile-warning"><strong>Valores a conferir</strong>${issues.map(i => `<p>${escape(i.message)}</p>`).join('')}</div>`:''}<p class="player-subtitle">${p.history.length ? `${p.history.length} posições registradas no histórico.` : 'Ainda não há resultados com data para exibir a evolução.'}</p><div class="dialog-actions"><button class="primary" id="profile-favorite" aria-pressed="${favorites.has(p.id)}">${favorites.has(p.id)?'★ Remover favorito':'☆ Adicionar favorito'}</button><button class="secondary" id="profile-games">Ver jogos</button><button class="secondary" id="profile-history">Ver evolução</button></div>`;
     $('#profile-favorite').addEventListener('click', () => { toggleFavorite(p); $('#profile-favorite').focus(); });
-    $('#profile-games').addEventListener('click', () => { $('#game-player').value=p.name; $('#game-round').value=''; $('#game-status').value=''; gamePage=1; renderGames(); $('#player-dialog').close(); location.hash='jogos'; });
+    $('#profile-games').addEventListener('click', () => { $('#game-player').value=p.name; $('#game-opponent').value=''; syncGamePlayers(); $('#game-round').value=''; $('#game-status').value=''; gamePage=1; renderGames(); $('#player-dialog').close(); location.hash='jogos'; });
     $('#profile-history').addEventListener('click', () => { $('#history-player').value = p.id; renderHistory(); $('#player-dialog').close(); location.hash = 'evolucao'; });
   }
   function openProfile(p) { dialogPlayer=p; renderProfile(p); $('#player-dialog').showModal(); }
@@ -158,10 +158,16 @@
   const pageSize=26;
   $('#games-summary').textContent = `${data.games.length} jogos previstos · ${data.playedGames} com resultado · ${data.pendingGames} sem resultado`;
   $('#game-player').insertAdjacentHTML('beforeend', [...players].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${escape(p.name)}">${escape(p.name)}</option>`).join(''));
+  $('#game-opponent').insertAdjacentHTML('beforeend', [...$('#game-player').options].slice(1).map(o=>o.outerHTML).join(''));
+  function syncGamePlayers() {
+    for (const [id,peer] of [['#game-player','#game-opponent'],['#game-opponent','#game-player']]) {
+      for (const option of $(id).options) option.disabled=!!option.value && option.value===$(peer).value;
+    }
+  }
   $('#game-round').insertAdjacentHTML('beforeend',Array.from({length:50},(_,i)=>`<option value="${i+1}">Rodada ${i+1} · ${i<25?'Turno':'Returno'}</option>`).join(''));
   function renderGames() {
-    const name=$('#game-player').value, round=$('#game-round').value, status=$('#game-status').value;
-    const filtered=data.games.filter(g=>(!name || g.a===name || g.b===name) && (!round || g.round===Number(round)) && (!status || g.status===status));
+    const name=$('#game-player').value, opponent=$('#game-opponent').value, round=$('#game-round').value, status=$('#game-status').value;
+    const filtered=data.games.filter(g=>(!name || g.a===name || g.b===name) && (!opponent || g.a===opponent || g.b===opponent) && (!name || !opponent || name!==opponent) && (!round || g.round===Number(round)) && (!status || g.status===status));
     const pages=Math.max(1,Math.ceil(filtered.length/pageSize));
     gamePage=Math.min(gamePage,pages);
     $('#games-count').textContent=`${filtered.length} de ${data.games.length} jogos`;
@@ -171,8 +177,8 @@
     $('#games-next').disabled=gamePage===pages;
     $('.games-pagination').hidden=filtered.length===0;
   }
-  ['#game-player','#game-round','#game-status'].forEach(id=>$(id).addEventListener('change',()=>{gamePage=1;renderGames();}));
-  $('#clear-games').addEventListener('click',()=>{['#game-player','#game-round','#game-status'].forEach(id=>$(id).value='');gamePage=1;renderGames();});
+  ['#game-player','#game-opponent','#game-round','#game-status'].forEach(id=>$(id).addEventListener('change',()=>{syncGamePlayers();gamePage=1;renderGames();}));
+  $('#clear-games').addEventListener('click',()=>{['#game-player','#game-opponent','#game-round','#game-status'].forEach(id=>$(id).value='');syncGamePlayers();gamePage=1;renderGames();});
   $('#games-prev').addEventListener('click',()=>{gamePage--;renderGames();$('#games-count').scrollIntoView({block:'start'});});
   $('#games-next').addEventListener('click',()=>{gamePage++;renderGames();$('#games-count').scrollIntoView({block:'start'});});
   renderGames();

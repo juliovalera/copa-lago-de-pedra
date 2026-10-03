@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.47' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.48' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.47' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.48' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.47' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.48' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.47 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.48 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -381,7 +381,29 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         db.execute('UPDATE players SET name=? WHERE id=1',('João & <Teste>',))
         db.execute('UPDATE players SET name=? WHERE id=2',('Antônio de Oliveira e Albuquerque Júnior',))
         db.execute('UPDATE games SET score_a=0,score_b=0,played_at=? WHERE id=2',('2024-02-29',))
+        db.execute('UPDATE games SET player_a_id=1,player_b_id=3,round_number=2,turn_number=1,score_a=0,score_b=0 WHERE id=648')
+        db.execute('UPDATE games SET player_a_id=3,player_b_id=1,round_number=27,turn_number=2 WHERE id=649')
+        db.execute('UPDATE games SET player_a_id=2,player_b_id=3 WHERE id=650')
+        db.execute("UPDATE users SET role='player',player_id=1,is_active=1 WHERE id=2")
         db.commit()
+        def ids_on_page(html): return [int(i) for i in re.findall(r'<article class="admin-card" id="game-(\d+)"',html)]
+        for who in (admin,normal_admin):
+            assert ids_on_page(get(who,'admin.php?player=1&opponent=3')[1])==[648,649]
+            assert ids_on_page(get(who,'admin.php?player=3&opponent=1')[1])==[648,649]
+            assert ids_on_page(get(who,'admin.php?opponent=3')[1])==[650,648,649]
+            assert ids_on_page(get(who,'admin.php?player=1&opponent=3&round=27&status=pending')[1])==[649]
+            assert ids_on_page(get(who,'admin.php?player=1&opponent=3&status=played')[1])==[648]
+            assert ids_on_page(get(who,'admin.php?player=1&opponent=1')[1])==[]
+            assert ids_on_page(get(who,'admin.php?player=9999&opponent=3')[1])==[]
+        assert ids_on_page(get(athlete,'admin.php?player=2&opponent=3')[1])==[648,649]
+        assert ids_on_page(get(athlete,'admin.php?player=2&opponent=1')[1])==[]
+        paginated=get(admin,'admin.php?player=1&opponent=2&status=pending')[1]
+        assert 'page=2&amp;status=pending&amp;player=1&amp;opponent=2' in paginated
+        panel_preview=get(admin,'admin.php?player=1&opponent=3')[1]
+        for name in ['admin.css','game-filters.js','credits.css','credits.js']:
+            panel_preview=panel_preview.replace('="'+name,'="../painel_php/public/'+name)
+        (ROOT/'previews/filter-panel.html').write_text(panel_preview,encoding='utf-8')
+        print('OK: filtro por confronto nas duas ordens, rodada/situacao, paginacao e restricao do botonista mesmo com URL manipulada')
         with guest.open(base+'exportar.php?q=nonexistent&status=pending') as response:
             assert response.headers['Content-Type']=='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             assert '.xlsx' in response.headers['Content-Disposition']

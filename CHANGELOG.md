@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.48 — 03/10/2026
+
+- Filtros Botonista e Adversário na consulta pública e no painel, combinados com rodada e situação.
+- Painel preserva o confronto na paginação; botonistas escolhem somente adversários dos próprios jogos, com restrição aplicada no servidor.
+- Seleção repetida do mesmo jogador impedida na interface, botão Limpar filtros e guia atualizado. Sem alteração no banco de dados.
+
 ## 1.47 — 30/09/2026
 
 - Botão Baixar tabela disponível também no cabeçalho da aba Jogos, com o mesmo seletor de Excel, Word, PDF e conteúdo da aba Classificação.

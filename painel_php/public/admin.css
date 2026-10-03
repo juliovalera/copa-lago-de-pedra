@@ -33,3 +33,7 @@
 .users-page .user-form label{min-width:0}
 .users-page .button{max-width:100%;white-space:normal;min-height:44px}
 @media(max-width:700px){.users-page .new-user-form,.user-info,.user-editors{grid-template-columns:minmax(0,1fr)}.user-card{padding:16px}.user-card-heading{flex-direction:column}.user-card-heading .status{white-space:normal}}
+
+.match-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.match-filters label{min-width:0}.match-filters .filter-submit{display:flex;flex-wrap:wrap;gap:8px}.match-filters select:disabled{color:#173e33;background:#f0f5f1;opacity:1}
+@media(max-width:800px){.match-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.match-filters{grid-template-columns:1fr}}

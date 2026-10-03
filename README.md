@@ -240,3 +240,7 @@ O teste HTTP valida o download anônimo, as duas abas e todas as linhas. `tests/
 O teste HTTP também confere as três seleções de conteúdo, todos os valores do Word contra o retrato público, imagens incorporadas, paginação configurada, parâmetros inválidos e ausência de campos privados. A verificação visual usa apenas arquivos fictícios.
 
 No ambiente Windows de desenvolvimento, após `python painel_php/tests/audit_http.py`, `python scripts/check_exports_browser.py` usa Chrome, os módulos Python `websockets` e `PyMuPDF` e as amostras em `previews/`. Confere o modal em diferentes larguras, teclado, falhas de download, PDFs paginados, logos e texto dentro das páginas. Essas ferramentas de teste não são necessárias na hospedagem.
+
+### Filtro de confrontos (1.48)
+
+A consulta pública e o painel oferecem Botonista e Adversário. Dois nomes restringem a lista aos confrontos entre ambos, em qualquer ordem, junto aos filtros de rodada e situação. No painel, a busca textual continua disponível e a paginação preserva as seleções. Contas de botonista têm o próprio jogador fixado no servidor, mesmo diante de parâmetros manipulados. Nenhuma migração de banco é necessária. Testes HTTP isolados cobrem os confrontos e permissões; `scripts/check_exports_browser.py --filters-only` verifica os controles no navegador com as amostras fictícias.
