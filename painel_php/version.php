@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-// Centésimos inteiros: a próxima implementação usa 154 (versão 1.54).
-const COPA_VERSION_NUMBER = 153;
+// Centésimos inteiros: a próxima implementação usa 155 (versão 1.55).
+const COPA_VERSION_NUMBER = 154;
 function copaVersion(): string { return number_format(COPA_VERSION_NUMBER / 100, 2, '.', ''); }
 function copaVersionButton(): string
 {
@@ -26,5 +26,5 @@ function copaCredits(): string
 }
 function copaHelpFooter(): string
 {
-    return '<footer class="app-help"><a href="index.php">Área pública</a><a href="guia.php">Guia de uso</a>' . copaVersionButton() . '</footer>' . copaCredits();
+    return '<footer class="app-help"><a href="index.php">Voltar à área pública do campeonato</a><a href="guia.php">Guia de uso</a>' . copaVersionButton() . '</footer>' . copaCredits();
 }

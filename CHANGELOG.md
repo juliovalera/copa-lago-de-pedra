@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.54 — 03/10/2026
+
+- Botão superior do canal de denúncias e link compartilhado do rodapé passam a informar "Voltar à área pública do campeonato", esclarecendo que são navegação, sem indicar publicidade do relato.
+
 ## 1.53 — 03/10/2026
 
 - Botonistas registram apenas jogos sem placar; resultados existentes ficam para consulta. Servidor bloqueia alteração de gols, data e remoção, inclusive por formulário antigo ou envio direto.
