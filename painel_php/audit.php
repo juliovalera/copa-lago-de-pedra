@@ -23,7 +23,7 @@ function auditActor(): string
 function auditRecord(string $action, string $target, array $before = [], array $after = [], string $source = 'Painel', ?string $actor = null): void
 {
     // Somente campos explicitamente permitidos: nunca senhas, tokens ou configurações.
-    $allowed = array_flip(['login_informado','ip','tela','bloqueado_ate','nivel','placar_a','placar_b','data','jogador_a','jogador_b','nome','login','email','jogador_id','ativo','senha_definida','link_id','gerado_por','arquivo','seguranca','status']);
+    $allowed = array_flip(['justificativa','login_informado','ip','tela','bloqueado_ate','nivel','placar_a','placar_b','data','jogador_a','jogador_b','nome','login','email','jogador_id','ativo','senha_definida','link_id','gerado_por','arquivo','seguranca','status']);
     $encode = static fn(array $data): string => json_encode(array_intersect_key($data, $allowed), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     $eventId = bin2hex(random_bytes(16));
     db()->prepare('INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?, ?, ?)')->execute([
@@ -59,18 +59,34 @@ function panelResultToken(array $game): string
     return hash('sha256', json_encode([$game['id'], $game['player_a_id'], $game['player_b_id'], $game['score_a'], $game['score_b'], $game['played_at'], $game['result_revision']], JSON_THROW_ON_ERROR));
 }
 
-function savePanelResult(int $id, ?int $a, ?int $b, string $date, string $expected): void
+function savePanelResult(int $id, ?int $a, ?int $b, string $date, string $expected, string $reason = ''): void
 {
+    if (($a === null) !== ($b === null) || ($a !== null && ($a < 0 || $b < 0))) throw new InvalidArgumentException('Informe os dois gols válidos.');
     if ($a !== null && !validGameDate($date)) throw new InvalidArgumentException('Informe uma data existente no calendário.');
-    auditedTransaction(static function () use ($id, $a, $b, $date, $expected): void {
+    auditedTransaction(static function () use ($id, $a, $b, $date, $expected, $reason): void {
         $before = gameById($id);
         if (!$before) throw new RuntimeException('Jogo não encontrado.');
+        $admin = hasFullAccess();
+        $user = currentUser();
+        if (!$admin && (!$user || !$user['player_id'] || !gameIsAccessible($id, (int) $user['player_id']))) {
+            throw new InvalidArgumentException('Sua conta não pode registrar este jogo.');
+        }
+        $registered = $before['score_a'] !== null || $before['score_b'] !== null;
+        if ($registered && !$admin) {
+            throw new InvalidArgumentException('Resultado registrado. Para corrigir o placar ou a data, procure a administração.');
+        }
         if (!hash_equals(panelResultToken($before), $expected)) {
             throw new ResultConflict('Este jogo foi atualizado depois que você abriu o formulário. Sua alteração não foi salva. Confira o placar e a data atuais antes de tentar novamente.');
         }
+        $changed = $before['score_a'] !== $a || $before['score_b'] !== $b || $before['played_at'] !== ($a === null ? null : $date);
+        $reason = trim($reason);
+        if ($registered && $changed && ($reason === '' || preg_match_all('/./us', $reason) > 1000 || !preg_match('//u', $reason) || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $reason))) {
+            throw new InvalidArgumentException('Informe a justificativa da correção ou remoção, com até 1000 caracteres.');
+        }
+        if (!$changed) return;
         db()->prepare('UPDATE games SET score_a = ?, score_b = ?, played_at = ? WHERE id = ?')->execute([$a, $b, $a === null ? null : $date, $id]);
         $after = gameById($id);
-        if (auditGame($before) !== auditGame($after)) auditRecord($a === null ? 'Resultado removido' : 'Resultado salvo', 'Jogo ' . $id, auditGame($before), auditGame($after));
+        if (auditGame($before) !== auditGame($after)) auditRecord($a === null ? 'Resultado removido' : 'Resultado salvo', 'Jogo ' . $id, auditGame($before), auditGame($after) + ($registered ? ['justificativa'=>$reason] : []));
     });
 }
 

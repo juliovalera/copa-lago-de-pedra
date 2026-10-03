@@ -31,7 +31,7 @@ refusedDigital(fn()=>saveDigitalSheet(701,$today,'',2,panelResultToken(gameById(
 foreach (['UPDATE digital_sheets SET status=\'draft\' WHERE game_id=701','DELETE FROM digital_sheets WHERE game_id=701'] as $sql) {
     $failed=false;try{$pdo->exec($sql);}catch(PDOException $e){$failed=true;}check($failed,'Finalized document is immutable');
 }
-savePanelResult(701,4,1,$today,panelResultToken(gameById(701)));
+savePanelResult(701,4,1,$today,panelResultToken(gameById(701)), 'Correcao conferida no teste');
 check(digitalSheet(701,$today)===$final,'Administrative correction preserves original signed document');
 $future=date('Y-m-d',strtotime('+1 day'));
 dailyRefereeLink(702,$future);

@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.53 — 03/10/2026
+
+- Botonistas registram apenas jogos sem placar; resultados existentes ficam para consulta. Servidor bloqueia alteração de gols, data e remoção, inclusive por formulário antigo ou envio direto.
+- Administradores corrigem ou removem resultados com justificativa obrigatória registrada na auditoria, junto aos dados anteriores, novos e responsável. Administradores participantes mantêm esse acesso.
+- Guia atualizado; avisos por e-mail mantidos, sem avisos de resultado em tentativas bloqueadas. Sem migração de banco ou alteração dos resultados existentes.
+
 ## 1.52 — 03/10/2026
 
 - Links de retorno no topo do canal de denúncias e da administração seguem o mesmo estilo dos botões do rodapé, com contraste e área de toque ampliada.

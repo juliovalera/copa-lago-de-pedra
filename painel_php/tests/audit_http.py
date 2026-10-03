@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.52' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.53' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.52' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.53' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.52' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.53' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.52 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.53 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -84,7 +84,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         normal_admin=client();get(normal_admin,'admin.php',{'login':'Gestor','password':'test-only'})
         assert get(normal_admin,'usuarios.php')[0]==403
         admin=client();status,html,_=get(admin,'admin.php',{'login':'','password':'test-only'})
-        status,html,_=get(admin,'admin.php',{'csrf':csrf(html),'result_token':result_token(html),'game_id':1,'score_a':2,'score_b':1,'played_at':'2026-09-20'})
+        status,html,_=get(admin,'admin.php',{'csrf':csrf(html),'reason':'Correcao conferida no teste','result_token':result_token(html),'game_id':1,'score_a':2,'score_b':1,'played_at':'2026-09-20'})
         assert status==200
         status,html,_=get(admin,'usuarios.php')
         status,html,_=get(admin,'usuarios.php',{'csrf':csrf(html),'action':'create','name':'Teste <script>alert(1)</script>','username':'novo','email':'teste@example.invalid','player_id':'','role':'admin'})
@@ -124,7 +124,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert status==200
         backup_name=next((app/'backups').glob('*.sqlite')).name
         status,form,_=get(admin,'admin.php')
-        get(admin,'admin.php',{'csrf':csrf(form),'result_token':result_token(form),'game_id':1,'score_a':5,'score_b':0,'played_at':'2026-09-21'})
+        get(admin,'admin.php',{'csrf':csrf(form),'reason':'Correcao conferida no teste','result_token':result_token(form),'game_id':1,'score_a':5,'score_b':0,'played_at':'2026-09-21'})
         before=db.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0]
         status,form,_=get(admin,'backup.php')
         status,form,_=get(admin,'backup.php',{'csrf':csrf(form),'action':'restore','backup_name':backup_name})
@@ -336,13 +336,13 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         first=get(admin,'admin.php')[1]
         second=get(normal_admin,'admin.php')[1]
         old=result_token(second)
-        get(admin,'admin.php',{'csrf':csrf(first),'result_token':result_token(first),'game_id':1,'score_a':7,'score_b':4,'played_at':'2026-09-20'})
+        get(admin,'admin.php',{'csrf':csrf(first),'reason':'Correcao conferida no teste','result_token':result_token(first),'game_id':1,'score_a':7,'score_b':4,'played_at':'2026-09-20'})
         counts=db.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0],db.execute('SELECT COUNT(*) FROM email_notifications').fetchone()[0]
-        status,conflict,url=get(normal_admin,'admin.php',{'csrf':csrf(second),'result_token':old,'game_id':1,'score_a':9,'score_b':9,'played_at':'2026-09-21'})
+        status,conflict,url=get(normal_admin,'admin.php',{'csrf':csrf(second),'reason':'Correcao conferida no teste','result_token':old,'game_id':1,'score_a':9,'score_b':9,'played_at':'2026-09-21'})
         assert status==200 and 'Sua alteração não foi salva' in conflict and 'round=1' in url
         assert db.execute('SELECT score_a,score_b FROM games WHERE id=1').fetchone()==(7,4)
         assert counts==(db.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0],db.execute('SELECT COUNT(*) FROM email_notifications').fetchone()[0])
-        get(normal_admin,'admin.php',{'csrf':csrf(conflict),'result_token':result_token(conflict),'game_id':1,'score_a':8,'score_b':4,'played_at':'2026-09-20'})
+        get(normal_admin,'admin.php',{'csrf':csrf(conflict),'reason':'Correcao conferida no teste','result_token':result_token(conflict),'game_id':1,'score_a':8,'score_b':4,'played_at':'2026-09-20'})
         assert db.execute('SELECT score_a FROM games WHERE id=1').fetchone()[0]==8
         print('OK: duas sessoes preservam resultado mais recente e permitem salvar apos conferir')
 
@@ -386,6 +386,45 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         db.execute('UPDATE games SET player_a_id=2,player_b_id=3 WHERE id=650')
         db.execute("UPDATE users SET role='player',player_id=1,is_active=1 WHERE id=2")
         db.commit()
+        # First entry remains available; existing results are protected on the server.
+        db.execute('INSERT INTO games(id,round_number,game_number,turn_number,player_a_id,player_b_id) VALUES (651,50,651,2,1,2)')
+        db.commit()
+        url='admin.php?round=50'
+        first=get(athlete,url)[1]
+        old_token=result_token(first,651)
+        entry={'csrf':csrf(first),'result_token':old_token,'game_id':651,'score_a':0,'score_b':0,'played_at':'2026-09-20'}
+        assert get(athlete,'admin.php',entry)[0]==200
+        assert db.execute('SELECT score_a,score_b FROM games WHERE id=651').fetchone()==(0,0)
+        readonly=get(athlete,url)[1]
+        card=re.search(r'<article class="admin-card" id="game-651".*?</article>',readonly).group(0)
+        assert 'game-form' not in card and 'Resultado registrado.' in card
+        admin_form=get(admin,url)[1]
+        fresh_token=result_token(admin_form,651)
+        baseline=db.execute('SELECT * FROM games WHERE id=651').fetchone()
+        counts=lambda: (db.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0],db.execute('SELECT COUNT(*) FROM email_notifications').fetchone()[0])
+        before_counts=counts()
+        for token,a,b,d in [(old_token,9,9,'2026-09-20'),(fresh_token,0,0,'2026-09-21'),(fresh_token,'','','')]:
+            get(athlete,'admin.php',dict(entry,result_token=token,score_a=a,score_b=b,played_at=d,reason='Tentativa indevida'))
+            assert db.execute('SELECT * FROM games WHERE id=651').fetchone()==baseline
+            assert counts()==before_counts
+        correction=dict(entry,csrf=csrf(admin_form),result_token=fresh_token,score_a=2,score_b=1)
+        get(admin,'admin.php',correction)
+        assert db.execute('SELECT * FROM games WHERE id=651').fetchone()==baseline
+        assert counts()==before_counts
+        get(admin,'admin.php',dict(correction,reason='Conferido com a sumula'))
+        assert db.execute('SELECT score_a,score_b FROM games WHERE id=651').fetchone()==(2,1)
+        event=db.execute("SELECT after_json FROM audit_log WHERE target='Jogo 651' ORDER BY rowid DESC LIMIT 1").fetchone()[0]
+        assert json.loads(event)['justificativa']=='Conferido com a sumula'
+        assert 'Conferido com a sumula' in get(admin,'auditoria.php')[1]
+        # A regular administrator who also plays can correct the date and remove a result.
+        form=get(normal_admin,url)[1]
+        get(normal_admin,'admin.php',dict(correction,csrf=csrf(form),result_token=result_token(form,651),played_at='2026-09-21',reason='Data conferida pela organizacao'))
+        assert db.execute('SELECT played_at FROM games WHERE id=651').fetchone()[0]=='2026-09-21'
+        form=get(normal_admin,url)[1]
+        get(normal_admin,'admin.php',dict(correction,csrf=csrf(form),result_token=result_token(form,651),score_a='',score_b='',played_at='',reason='Registro duplicado identificado'))
+        assert db.execute('SELECT score_a,score_b,played_at FROM games WHERE id=651').fetchone()==(None,None,None)
+        db.execute('DELETE FROM games WHERE id=651');db.commit()
+        print('OK: primeiro registro, empate zero, somente consulta, POST forjado/antigo bloqueado sem email, justificativa obrigatoria e auditada, administrador participante corrige/remove')
         def ids_on_page(html): return [int(i) for i in re.findall(r'<article class="admin-card" id="game-(\d+)"',html)]
         for who in (admin,normal_admin):
             assert ids_on_page(get(who,'admin.php?player=1&opponent=3')[1])==[648,649]

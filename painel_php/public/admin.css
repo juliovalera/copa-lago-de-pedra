@@ -37,3 +37,5 @@
 .match-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.match-filters label{min-width:0}.match-filters .filter-submit{display:flex;flex-wrap:wrap;gap:8px}.match-filters select:disabled{color:#173e33;background:#f0f5f1;opacity:1}
 @media(max-width:800px){.match-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.match-filters{grid-template-columns:1fr}}
+
+.game-form .result-reason{grid-column:1/-1}.result-reason textarea{width:100%;min-height:80px;padding:10px;font:inherit;resize:vertical;border:1px solid #839f8e;border-radius:7px}.result-reason small{font-weight:400}

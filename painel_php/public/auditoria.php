@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 function details(string $json): string
 {
-    $labels = ['login_informado'=>'Login informado','ip'=>'Origem (IP)','tela'=>'Tela de entrada','bloqueado_ate'=>'Bloqueado até (UTC)','nivel'=>'Nível de acesso','placar_a'=>'Gols do jogador A','placar_b'=>'Gols do jogador B','data'=>'Data do jogo','jogador_a'=>'Jogador A','jogador_b'=>'Jogador B','nome'=>'Nome','login'=>'Login','email'=>'E-mail','jogador_id'=>'Vínculo com jogador','ativo'=>'Acesso ativo','senha_definida'=>'Senha definida','link_id'=>'Identificador da súmula','gerado_por'=>'Súmula gerada por','arquivo'=>'Arquivo','seguranca'=>'Cópia de segurança','status'=>'Situação'];
+    $labels = ['justificativa'=>'Justificativa da correção','login_informado'=>'Login informado','ip'=>'Origem (IP)','tela'=>'Tela de entrada','bloqueado_ate'=>'Bloqueado até (UTC)','nivel'=>'Nível de acesso','placar_a'=>'Gols do jogador A','placar_b'=>'Gols do jogador B','data'=>'Data do jogo','jogador_a'=>'Jogador A','jogador_b'=>'Jogador B','nome'=>'Nome','login'=>'Login','email'=>'E-mail','jogador_id'=>'Vínculo com jogador','ativo'=>'Acesso ativo','senha_definida'=>'Senha definida','link_id'=>'Identificador da súmula','gerado_por'=>'Súmula gerada por','arquivo'=>'Arquivo','seguranca'=>'Cópia de segurança','status'=>'Situação'];
     $data = json_decode($json, true) ?: [];
     if (!$data) return '<p>Não se aplica.</p>';
     $html = '<dl>';

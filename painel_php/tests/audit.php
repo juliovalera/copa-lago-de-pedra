@@ -13,17 +13,17 @@ $pdo->exec("CREATE TRIGGER fail_qr_audit BEFORE INSERT ON audit_log BEGIN SELECT
 check(rejected($qr['token']) && gameById(200)['score_a'] === null && validRefereeLink($qr['token'])['used_at'] === null, 'falha de auditoria reverte placar e consumo do QR');
 $pdo->exec('DROP TRIGGER fail_qr_audit');
 $initial = $count();
-savePanelResult(88, 4, 3, '2026-09-20', panelResultToken(gameById(88)));
+savePanelResult(88, 4, 3, '2026-09-20', panelResultToken(gameById(88)), 'Correcao conferida no teste');
 $event = $last();
 check($count() === $initial+1 && $event['actor'] === 'Administrador principal', 'alteração administrativa identifica responsável');
 check(json_decode($event['before_json'], true)['placar_a'] === 2 && json_decode($event['after_json'], true)['placar_a'] === 4, 'placar anterior e novo registrados');
-savePanelResult(88, 4, 3, '2026-09-20', panelResultToken(gameById(88)));
+savePanelResult(88, 4, 3, '2026-09-20', panelResultToken(gameById(88)), 'Correcao conferida no teste');
 check($count() === $initial+1, 'salvamento sem alteração não duplica histórico');
-savePanelResult(88, null, null, '', panelResultToken(gameById(88)));
+savePanelResult(88, null, null, '', panelResultToken(gameById(88)), 'Correcao conferida no teste');
 check($last()['action'] === 'Resultado removido' && gameById(88)['played_at'] === null, 'remoção de resultado auditada');
 $pdo->exec("CREATE TRIGGER fail_audit BEFORE INSERT ON audit_log BEGIN SELECT RAISE(ABORT, 'falha de auditoria'); END");
 $failed = false;
-try { savePanelResult(88, 1, 1, '2026-09-20', panelResultToken(gameById(88))); } catch (PDOException $e) { $failed = true; }
+try { savePanelResult(88, 1, 1, '2026-09-20', panelResultToken(gameById(88)), 'Correcao conferida no teste'); } catch (PDOException $e) { $failed = true; }
 check($failed && gameById(88)['score_a'] === null, 'falha de auditoria reverte resultado administrativo');
 $failed = false;
 try { dailyRefereeLink(88, date('Y-m-d', strtotime('+2 day'))); } catch (PDOException $e) { $failed = true; }
@@ -41,7 +41,7 @@ $backup = tempnam(sys_get_temp_dir(), 'copa-audit-test-');
 unlink($backup); // Arquivo temporário criado exclusivamente por este teste.
 try {
     $pdo->exec('VACUUM INTO ' . $pdo->quote($backup));
-    savePanelResult(88, 5, 4, '2026-09-22', panelResultToken(gameById(88)));
+    savePanelResult(88, 5, 4, '2026-09-22', panelResultToken(gameById(88)), 'Correcao conferida no teste');
     $beforeRestore = $count();
     restoreAuditedBackup($backup, 'seguranca-teste.sqlite');
     check(gameById(88)['score_a'] === null, 'restauração recupera resultado do backup');
