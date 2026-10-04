@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.56 — 04/10/2026
+
+- Nova área administrativa Confirmar partidas: filtros pelos dois jogadores e datas com resultados, para partidas já ocorridas sem árbitro.
+- Links individuais temporários (3, 7, 14 ou 30 dias) para assinatura com dedo ou mouse, sem conta. Duas assinaturas e aval exclusivo do administrador criador para concluir; documento reservado e imprimível.
+- Divergências interrompem a coleta; cancelamento revoga links e correções de placar/data exigem nova confirmação. Documentos anteriores preservados, sem mudar resultados.
+- Links armazenados apenas como hash; consumo individual, CSRF e verificação dos dados atuais no servidor. Auditoria sem links ou desenhos das assinaturas.
+- Backups preservam os documentos; restaurações cancelam coletas pendentes para impedir reativação de links antigos. Guia atualizado.
+
 ## 1.55 — 03/10/2026
 
 - Texto dos links de retorno reduzido para "Voltar", mantendo o destino na área pública e a descrição completa para leitores de tela.

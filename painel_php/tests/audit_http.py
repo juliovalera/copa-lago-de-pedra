@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
     shutil.copytree(ROOT/'site', root/'site')
     app = root/'painel_php'
     (app/'public').mkdir(parents=True)
-    for name in ('complaints.php', 'documents.php', 'export_ui.php', 'spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
+    for name in ('confirmations.php','complaints.php', 'documents.php', 'export_ui.php', 'spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
         shutil.copyfile(ROOT/'painel_php'/name, app/name)
     for path in (ROOT/'painel_php/public').glob('*'):
         if path.is_file(): shutil.copyfile(path, app/'public'/path.name)
@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.55' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.56' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.55' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.56' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.55' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.56' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.55 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.56 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -425,6 +425,87 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert db.execute('SELECT score_a,score_b,played_at FROM games WHERE id=651').fetchone()==(None,None,None)
         db.execute('DELETE FROM games WHERE id=651');db.commit()
         print('OK: primeiro registro, empate zero, somente consulta, POST forjado/antigo bloqueado sem email, justificativa obrigatoria e auditada, administrador participante corrige/remove')
+        # Post-match signatures: individual capabilities plus creator approval, no result changes.
+        assert get(guest,'confirmacoes.php')[2].endswith('admin.php')
+        assert get(athlete,'confirmacoes.php')[0]==403
+        db.execute("INSERT INTO games(id,round_number,game_number,turn_number,player_a_id,player_b_id,score_a,score_b,played_at) VALUES (652,50,652,2,1,2,3,1,'2026-09-20')")
+        db.commit()
+        confirm_page=get(admin,'confirmacoes.php?player=1&opponent=2&date=2026-09-20')[1]
+        assert 'name="game" value="652"' in confirm_page
+        assert 'name="game" value="652"' not in get(admin,'confirmacoes.php?player=3')[1]
+        assert 'name="game" value="652"' in get(admin,'confirmacoes.php?player=2&opponent=1')[1]
+        def make_confirmation():
+            page=get(admin,'confirmacoes.php')[1]
+            code,html,url=get(admin,'confirmacoes.php',{'csrf':csrf(page),'action':'create','game':652,'days':7})
+            assert code==200,html
+            cid=url.split('id=')[-1]
+            links=re.findall(r'id="link-[ab]" value="([^"]+)"',html)
+            assert len(links)==2,html
+            paths=['assinar-partida.php?'+link.split('?')[-1] for link in links]
+            return cid,paths,html
+        page=get(admin,'confirmacoes.php')[1]
+        get(admin,'confirmacoes.php',{'csrf':'invalid','action':'create','game':652,'days':7})
+        assert db.execute('SELECT COUNT(*) FROM match_confirmations').fetchone()[0]==0
+        cid,paths,document=make_confirmation()
+        assert 'hash_a' not in document and 'result_token' not in document
+        raw_token=paths[0].split('t=')[1]
+        assert raw_token not in str(db.execute('SELECT * FROM match_confirmations').fetchall())
+        assert raw_token not in str(db.execute('SELECT * FROM audit_log').fetchall())
+        signer_a,signer_b=client(),client()
+        _,aform,aurl=get(signer_a,paths[0]); _,bform,burl=get(signer_b,paths[1])
+        assert '?id=' in aurl and 't=' not in aurl
+        assert get(client(),'assinar-partida.php?id='+cid)[0]==403
+        assert 'value="3"' not in aform # scores are read-only text
+        signature=json.dumps([[[10+i*40,100+(i%2)*40] for i in range(10)]])
+        get(signer_a,'assinar-partida.php?id='+cid,{'csrf':'invalid','action':'sign','consent':1,'signature':signature})
+        assert db.execute('SELECT signature_a FROM match_confirmations WHERE id=?',(cid,)).fetchone()[0] is None
+        get(signer_a,'assinar-partida.php?id='+cid,{'csrf':csrf(aform),'action':'sign','consent':1,'signature':'[]'})
+        assert db.execute('SELECT signature_a FROM match_confirmations WHERE id=?',(cid,)).fetchone()[0] is None
+        get(signer_a,'assinar-partida.php?id='+cid,{'csrf':csrf(aform),'action':'sign','consent':1,'signature':signature,'side':'b'})
+        assert db.execute('SELECT signature_a,signature_b FROM match_confirmations WHERE id=?',(cid,)).fetchone()==(signature.replace(' ',''),None)
+        assert get(signer_a,paths[0])[0]==403
+        get(admin,'confirmacoes.php?id='+cid,{'csrf':csrf(document),'action':'approve','id':cid})
+        assert db.execute('SELECT status FROM match_confirmations WHERE id=?',(cid,)).fetchone()[0]=='pending'
+        get(signer_b,'assinar-partida.php?id='+cid,{'csrf':csrf(bform),'action':'sign','consent':1,'signature':signature})
+        other=get(normal_admin,'confirmacoes.php?id='+cid)[1]
+        get(normal_admin,'confirmacoes.php?id='+cid,{'csrf':csrf(other),'action':'approve','id':cid})
+        assert db.execute('SELECT status FROM match_confirmations WHERE id=?',(cid,)).fetchone()[0]=='pending'
+        get(admin,'confirmacoes.php?id='+cid,{'csrf':csrf(document),'action':'approve','id':cid})
+        assert db.execute('SELECT status,approved_by FROM match_confirmations WHERE id=?',(cid,)).fetchone()==('final','Administrador principal')
+        assert db.execute('SELECT score_a,score_b,played_at FROM games WHERE id=652').fetchone()==(3,1,'2026-09-20')
+        final_html=get(admin,'confirmacoes.php?id='+cid)[1]
+        assert final_html.count('<svg')==2 and 'Partida realizada sem' in final_html
+        try: db.execute("UPDATE match_confirmations SET signature_a=NULL WHERE id=?",(cid,));assert False
+        except sqlite3.IntegrityError: db.rollback()
+        db.execute('UPDATE games SET score_a=4 WHERE id=652');db.commit()
+        assert 'Dados alterados' in get(admin,'confirmacoes.php?id='+cid)[1]
+        # A correction starts a fresh document; old signatures remain only as history.
+        cid2,paths2,doc2=make_confirmation()
+        c=client();form=get(c,paths2[0])[1]
+        get(c,'assinar-partida.php?id='+cid2,{'csrf':csrf(form),'action':'disagree','divergence':'O placar precisa ser conferido'})
+        assert db.execute('SELECT status FROM match_confirmations WHERE id=?',(cid2,)).fetchone()[0]=='divergent'
+        assert get(client(),paths2[1])[0]==403
+        assert 'O placar precisa ser conferido' in get(admin,'confirmacoes.php?id='+cid2)[1]
+        cid3,paths3,doc3=make_confirmation()
+        c=client();form=get(c,paths3[0])[1]
+        db.execute("UPDATE games SET played_at='2026-09-21' WHERE id=652");db.commit()
+        assert get(c,'assinar-partida.php?id='+cid3,{'csrf':csrf(form),'action':'sign','consent':1,'signature':signature})[0]==403
+        assert db.execute('SELECT signature_a FROM match_confirmations WHERE id=?',(cid3,)).fetchone()[0] is None
+        cid4,paths4,doc4=make_confirmation()
+        get(admin,'confirmacoes.php?id='+cid4,{'csrf':csrf(doc4),'action':'cancel','id':cid4})
+        assert get(client(),paths4[0])[0]==403
+        cid5,paths5,doc5=make_confirmation()
+        db.execute('UPDATE match_confirmations SET expires_at=0 WHERE id=?',(cid5,));db.commit()
+        assert get(client(),paths5[1])[0]==403
+        # Preview uses fictitious names and no usable links.
+        preview=final_html.replace('href="admin.css"','href="../painel_php/public/admin.css"').replace('href="digital.css"','href="../painel_php/public/digital.css"').replace('href="confirmations.css?', 'href="../painel_php/public/confirmations.css?').replace('src="confirmations.js?', 'src="../painel_php/public/confirmations.js?')
+        (ROOT/'previews/confirmation-final.html').write_text(preview,encoding='utf-8')
+        form_preview=aform
+        for asset in ['admin.css','digital.css','confirmations.css','credits.css','confirmations.js','credits.js']:
+            form_preview=form_preview.replace('="'+asset, '="../painel_php/public/'+asset)
+        (ROOT/'previews/confirmation-form.html').write_text(form_preview,encoding='utf-8')
+        db.execute('DELETE FROM games WHERE id=652');db.commit()
+        print('OK: filtros de partidas ocorridas, links individuais sem conta, CSRF, duas assinaturas, aval exclusivo do criador, divergencia, expiracao, cancelamento, dados alterados e documento imutavel; placar preservado')
         def ids_on_page(html): return [int(i) for i in re.findall(r'<article class="admin-card" id="game-(\d+)"',html)]
         for who in (admin,normal_admin):
             assert ids_on_page(get(who,'admin.php?player=1&opponent=3')[1])==[648,649]
@@ -608,6 +689,8 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         existing_backup=db.execute('SELECT COUNT(*) FROM complaints').fetchone()[0]
         get(admin,'backup.php',{'csrf':csrf(backup_form),'action':'restore','backup_name':backup_name})
         assert db.execute('SELECT COUNT(*) FROM complaints').fetchone()[0]==existing_backup
+        assert db.execute("SELECT COUNT(*) FROM match_confirmations WHERE status='final'").fetchone()[0]==1
+        assert db.execute("SELECT COUNT(*) FROM match_confirmations WHERE status='pending'").fetchone()[0]==0
         assert db.execute('SELECT bytes FROM complaint_files WHERE id=?',(fid,)).fetchone()[0]==b'%PDF-1.4 fixture'
         # Restore an absent case, including its messages, attachments and notices.
         case_backup='copa-lago-de-pedra-20990101-010101.sqlite'

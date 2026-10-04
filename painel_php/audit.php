@@ -169,6 +169,8 @@ function restoreAuditedBackup(string $source, string $safety): void
     if (!isMasterAdmin()) throw new RuntimeException('Somente o administrador máximo pode restaurar backups.');
     require_once __DIR__.'/complaints.php';
     initialiseComplaints();
+    require_once __DIR__.'/confirmations.php';
+    initialiseConfirmations();
     $pdo = db();
     $actor = auditActor();
     $pdo->prepare('ATTACH DATABASE ? AS restoration')->execute([$source]);
@@ -182,6 +184,9 @@ function restoreAuditedBackup(string $source, string $safety): void
                 }
                 $pdo->exec('INSERT OR IGNORE INTO main.complaints SELECT * FROM restoration.complaints');
             }
+            if (in_array('match_confirmations',$tables,true)) $pdo->exec('INSERT OR IGNORE INTO main.match_confirmations SELECT * FROM restoration.match_confirmations');
+            // Restoring must not reactivate signed grants from an older game state.
+            $pdo->exec("UPDATE main.match_confirmations SET status='cancelled' WHERE status='pending'");
             foreach (['user_invites','referee_links','users','games','players'] as $table) $pdo->exec('DELETE FROM main.' . $table);
             foreach (['players','games','users','referee_links','user_invites'] as $table) {
                 if (!in_array($table, $tables, true)) continue;

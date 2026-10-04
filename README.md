@@ -263,3 +263,13 @@ SMTP usa configuração existente. Avisos de casos confirmados seguem para conta
 Backups incluem contatos, relatos, anexos e mensagens. A restauração preserva casos atuais e importa os que só existem no backup, sem sobrescrever os atuais. Administradores com acesso aos backups também têm acesso a esses dados reservados. Não publique bancos ou backups no GitHub. Testes HTTP usam banco e SMTP fictícios.
 
 Após o teste HTTP, `python scripts/check_complaints_browser.py` confere as telas fictícias do canal no Chrome em larguras de 320 a 1280 pixels (Windows, módulo Python websockets).
+
+## Confirmação posterior de partidas sem árbitro
+
+Em **Confirmar partidas**, administradores filtram jogos com placar e data já ocorrida pelos dois jogadores e pela data. Cada participante recebe um link individual (3/7/14/30 dias), confere os dados e assina. Somente o administrador que gerou os links pode dar o aval final, depois das duas assinaturas. Acesso principal compartilha a identidade administrativa `master`.
+
+- A coleta não altera o placar. Divergências bloqueiam a conclusão. Correções exigem nova coleta e aval, preservando o documento anterior.
+- Links são capacidades de acesso: posse não comprova identidade. Devem ser enviados individualmente, sem divulgação em grupos. Tokens aleatórios de 32 bytes, apenas hashes no banco; troca por sessão e redirecionamento retiram o token da URL antes de carregar recursos. Os logs de acesso da hospedagem ainda podem registrar a URL inicial e devem ser protegidos.
+- CSRF, consumo individual, prazo e verificação transacional da revisão do resultado. Documentos finais imutáveis, consulta e impressão restritas aos administradores. Assinaturas não são publicadas nem copiadas para a auditoria geral.
+- Sem cron e sem envio automático de e-mails nesta coleta. Links aparecem apenas após geração; administradores copiam e enviam. Cancelar e gerar novamente exige duas novas assinaturas.
+- Migração automática ao abrir a nova área; tabela `match_confirmations`, independente dos resultados. Restauração preserva documentos atuais, importa ausentes e cancela pendentes para não reativar links.

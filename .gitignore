@@ -44,3 +44,5 @@
 **/*backup*/
 
 !/scripts/check_complaints_browser.py
+
+!/scripts/check_confirmations_browser.py
