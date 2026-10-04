@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.58 — 04/10/2026
+
+- Rodapé da Ajuda padronizado com botões Voltar, Ajuda e Versão, com bordas, contraste, espaçamento e disposição vertical no celular.
+
 ## 1.57 — 04/10/2026
 
 - Rodapé público com nomes mais curtos: Ouvidoria, Painel e Ajuda. O link compartilhado do guia também passa a se chamar Ajuda.
