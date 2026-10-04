@@ -1,0 +1,55 @@
+/* Shared navigation footer: used by copaHelpFooter() on every PHP screen. */
+footer.app-help {
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 28px auto 0;
+  padding: 20px 16px;
+  border-top: 1px solid #d6e2d9;
+  font-size: 1rem;
+  color: #173e33;
+}
+footer.app-help > a,
+footer.app-help > button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid #839f8e;
+  border-radius: 10px;
+  background: #f6f8f3;
+  color: #173e33;
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.4;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+footer.app-help > a:hover,
+footer.app-help > button:hover {
+  background: #e6eedf;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+footer.app-help > :focus-visible {
+  outline: 3px solid #1769aa;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  footer.app-help > a,
+  footer.app-help > button { flex: 1 1 100%; }
+}
+@media print { footer.app-help { display: none !important; } }

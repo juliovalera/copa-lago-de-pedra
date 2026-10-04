@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.59 — 04/10/2026
+
+- Rodapé compartilhado padronizado em todas as telas PHP com Voltar, Ajuda e Versão: botões com bordas, contraste, foco visível, espaçamento e empilhamento no celular.
+- Estilo centralizado em footer.css, removendo as regras duplicadas de cada tela. Rodapé oculto na impressão.
+
 ## 1.58 — 04/10/2026
 
 - Rodapé da Ajuda padronizado com botões Voltar, Ajuda e Versão, com bordas, contraste, espaçamento e disposição vertical no celular.
