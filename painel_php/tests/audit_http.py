@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.59' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.60' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.59' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.60' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.59' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.60' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.59 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.60 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -475,12 +475,27 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert db.execute('SELECT score_a,score_b,played_at FROM games WHERE id=652').fetchone()==(3,1,'2026-09-20')
         final_html=get(admin,'confirmacoes.php?id='+cid)[1]
         assert final_html.count('<svg')==2 and 'Partida realizada sem' in final_html
+        print_path='sumula-confirmada.php?id='+cid
+        assert get(guest,print_path)[2].endswith('admin.php')
+        assert get(athlete,print_path)[0]==403
+        status,printed,_=get(admin,print_path)
+        assert status==200 and printed.count('<svg')==2 and 'AVAL DA ORGANIZA' in printed
+        assert 'sumula.css?' in printed and 'lago_de_pedra.png' in printed and 'liga_mogiana.png' in printed
+        assert 'a identidade de quem assinou' not in printed and 'hash_a' not in printed
+        print_preview=printed
+        for asset in ['sumula.css','sumula-confirmada.css','confirmations.js']:
+            print_preview=print_preview.replace('="'+asset,'="../painel_php/public/'+asset)
+        print_preview=print_preview.replace('asset.php?file=lago_de_pedra.png','../site/lago_de_pedra.png').replace('asset.php?file=liga_mogiana.png','../site/liga_mogiana.png')
+        (ROOT/'previews/confirmed-sheet.html').write_text(print_preview,encoding='utf-8')
+
         try: db.execute("UPDATE match_confirmations SET signature_a=NULL WHERE id=?",(cid,));assert False
         except sqlite3.IntegrityError: db.rollback()
         db.execute('UPDATE games SET score_a=4 WHERE id=652');db.commit()
         assert 'Dados alterados' in get(admin,'confirmacoes.php?id='+cid)[1]
         # A correction starts a fresh document; old signatures remain only as history.
+        assert 'DOCUMENTO HIST' in get(admin,print_path)[1]
         cid2,paths2,doc2=make_confirmation()
+        assert get(admin,'sumula-confirmada.php?id='+cid2)[0]==404
         c=client();form=get(c,paths2[0])[1]
         get(c,'assinar-partida.php?id='+cid2,{'csrf':csrf(form),'action':'disagree','divergence':'O placar precisa ser conferido'})
         assert db.execute('SELECT status FROM match_confirmations WHERE id=?',(cid2,)).fetchone()[0]=='divergent'

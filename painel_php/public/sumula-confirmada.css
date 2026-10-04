@@ -1,0 +1,18 @@
+.confirmed-sheet{min-height:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.confirmed-sheet .info-grid strong.no-referee{font-size:12px;height:auto;border:0}
+.confirmed-sheet .team{height:auto;min-height:21mm;overflow-wrap:anywhere}
+.confirmed-sheet .team strong{margin-top:3mm}
+.confirmed-sheet .score-fields{font-size:19px;font-weight:700;grid-template-columns:minmax(0,1fr) 3mm minmax(0,1fr);gap:1mm}
+.confirmed-sheet .record td{font-size:14px;font-weight:700}
+.confirmed-sheet .notes p{margin:0;padding:2mm 3mm;font-size:11px;line-height:1.4}
+.confirmed-sheet .notes div{height:8mm}
+.confirmed-sheet .confirmed-signatures>div{height:auto;min-height:36mm;min-width:0;padding:2mm;overflow-wrap:anywhere}
+.confirmed-signatures svg{display:block;width:100%;height:17mm}
+.confirmed-signatures strong,.confirmed-signatures small{display:block;line-height:1.35}
+.confirmed-signatures strong{font-size:10px}
+.confirmed-signatures small{font-size:9px;margin-top:1mm}
+.confirmed-signatures p{font-size:11px;line-height:1.4;margin:5mm 0 2mm}
+.document-reference{font-size:8px;margin:3mm 0 0;overflow-wrap:anywhere}
+.historical-note{font-size:10px;font-weight:700;border:1px solid #9b3a22;padding:2mm;color:#762812}
+.print-actions{flex-wrap:wrap}.print-actions :focus-visible{outline:3px solid #e1ba51;outline-offset:3px}
+@media print{.confirmed-sheet .brand,.confirmed-sheet .info-grid,.confirmed-sheet .match-box,.confirmed-sheet .record,.confirmed-sheet .notes,.confirmed-signatures{break-inside:avoid}}

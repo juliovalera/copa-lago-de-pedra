@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.60 — 04/10/2026
+
+- Súmulas confirmadas por links passam a ter uma página de impressão no padrão oficial: logos, identificação, placar, registro do jogo, observações, duas assinaturas e aval da organização.
+- Assinaturas existentes aproveitadas; campos não coletados permanecem em branco. Observação sobre identidade retirada do documento e mantida apenas na orientação administrativa.
+- Impressão restrita a administradores e documentos concluídos; registros cujos dados mudaram recebem identificação de documento histórico. Guia atualizado.
+
 ## 1.59 — 04/10/2026
 
 - Rodapé compartilhado padronizado em todas as telas PHP com Voltar, Ajuda e Versão: botões com bordas, contraste, foco visível, espaçamento e empilhamento no celular.

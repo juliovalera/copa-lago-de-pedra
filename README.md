@@ -273,3 +273,5 @@ Em **Confirmar partidas**, administradores filtram jogos com placar e data já o
 - CSRF, consumo individual, prazo e verificação transacional da revisão do resultado. Documentos finais imutáveis, consulta e impressão restritas aos administradores. Assinaturas não são publicadas nem copiadas para a auditoria geral.
 - Sem cron e sem envio automático de e-mails nesta coleta. Links aparecem apenas após geração; administradores copiam e enviam. Cancelar e gerar novamente exige duas novas assinaturas.
 - Migração automática ao abrir a nova área; tabela `match_confirmations`, independente dos resultados. Restauração preserva documentos atuais, importa ausentes e cancela pendentes para não reativar links.
+
+A impressão das confirmações concluídas usa `public/sumula-confirmada.php`, com o CSS da súmula oficial e complementos para as assinaturas salvas. Acesso somente administrativo; documentos pendentes não podem ser impressos nessa rota. Placar/data corrigidos marcam o documento anterior como histórico.
