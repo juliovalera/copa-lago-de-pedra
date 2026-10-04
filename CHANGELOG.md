@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.57 — 04/10/2026
+
+- Rodapé público com nomes mais curtos: Ouvidoria, Painel e Ajuda. O link compartilhado do guia também passa a se chamar Ajuda.
+- Página da Ouvidoria esclarece o recebimento reservado de denúncias e relatos de possíveis irregularidades; guia de uso atualizado com os novos nomes.
+
 ## 1.56 — 04/10/2026
 
 - Nova área administrativa Confirmar partidas: filtros pelos dois jogadores e datas com resultados, para partidas já ocorridas sem árbitro.

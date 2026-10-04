@@ -14,7 +14,7 @@ Sistema da I Copa Lago de Pedra, desenvolvido por **Júlio César Valera**. A ve
 
 - **Quero testar:** siga [Executar no computador](#-executar-no-computador).
 - **Quero hospedar:** veja [Publicação](#-publicação).
-- **Quero aprender a usar:** abra o **Guia de uso** pelo link no site ou painel.
+- **Quero aprender a usar:** abra o **Ajuda** (guia de uso) pelo link no site ou painel.
 - **Quero desenvolver:** consulte [Estrutura](#-estrutura) e [Testes](#-testes).
 - **Quero ver o que mudou:** leia o [histórico de versões](CHANGELOG.md).
 
@@ -248,7 +248,7 @@ A consulta pública e o painel oferecem Botonista e Adversário. Dois nomes rest
 
 ### Canal reservado de denúncias (1.49)
 
-O rodapé público oferece **Registrar denúncia** (`public/denuncia.php`). Nome, e-mail, telefone com DDD, identificação dos envolvidos e relato são obrigatórios. Não exige conta. O telefone é apenas contato, sem SMS ou WhatsApp. Confirmar o e-mail prova acesso à caixa, não identidade nem veracidade do relato.
+O rodapé público oferece **Ouvidoria** (`public/denuncia.php`). Nome, e-mail, telefone com DDD, identificação dos envolvidos e relato são obrigatórios. Não exige conta. O telefone é apenas contato, sem SMS ou WhatsApp. Confirmar o e-mail prova acesso à caixa, não identidade nem veracidade do relato.
 
 O link de confirmação dura 48 horas e exige confirmação por botão (POST com CSRF); abrir o e-mail não encaminha o caso. Depois, o denunciante recebe protocolo e link reservado por 90 dias. Tokens de acesso são aleatórios, verificados por hash e trocados por acesso de sessão com redirecionamento que remove o token da URL. Páginas privadas usam no-store, no-referrer e noindex. Não compartilhe links de acesso.
 
