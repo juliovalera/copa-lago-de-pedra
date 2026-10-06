@@ -171,12 +171,16 @@ function restoreAuditedBackup(string $source, string $safety): void
     initialiseComplaints();
     require_once __DIR__.'/confirmations.php';
     initialiseConfirmations();
+    require_once __DIR__.'/attachments.php';
+    initialiseAttachments();
+    attachmentRestoreFiles($source);
     $pdo = db();
     $actor = auditActor();
     $pdo->prepare('ATTACH DATABASE ? AS restoration')->execute([$source]);
     try {
         auditedTransaction(static function () use ($pdo, $source, $safety, $actor): void {
             $tables = $pdo->query("SELECT name FROM restoration.sqlite_master WHERE type='table'")->fetchAll(PDO::FETCH_COLUMN);
+            if (in_array('game_attachments',$tables,true)) $pdo->exec('INSERT OR IGNORE INTO main.game_attachments SELECT * FROM restoration.game_attachments');
             // Preserve current cases. Import complete missing cases from the backup only.
             if (in_array('complaints',$tables,true)) {
                 foreach (['complaint_events','complaint_files','complaint_mail'] as $table) {

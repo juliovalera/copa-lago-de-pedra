@@ -4,7 +4,7 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('Teste disponivel somente pela linha de comando.'); }
 $testDirectory = sys_get_temp_dir() . '/copa-isolated-' . bin2hex(random_bytes(12));
 if (!mkdir($testDirectory, 0700)) throw new RuntimeException('Cannot create isolated test directory.');
-$testFiles = ['confirmations.php','complaints.php','db.php','audit.php','version.php','notifications.php','login_security.php','digital_sheet.php'];
+$testFiles = ['attachments.php','confirmations.php','complaints.php','db.php','audit.php','version.php','notifications.php','login_security.php','digital_sheet.php'];
 $testPaths = [];
 try {
     foreach ($testFiles as $file) {

@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
     shutil.copytree(ROOT/'site', root/'site')
     app = root/'painel_php'
     (app/'public').mkdir(parents=True)
-    for name in ('confirmations.php','complaints.php', 'documents.php', 'export_ui.php', 'spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
+    for name in ('attachments.php','confirmations.php','complaints.php', 'documents.php', 'export_ui.php', 'spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
         shutil.copyfile(ROOT/'painel_php'/name, app/name)
     for path in (ROOT/'painel_php/public').glob('*'):
         if path.is_file(): shutil.copyfile(path, app/'public'/path.name)
@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.60' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.61' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.60' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.61' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.60' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.61' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.60 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.61 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -425,6 +425,84 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert db.execute('SELECT score_a,score_b,played_at FROM games WHERE id=651').fetchone()==(None,None,None)
         db.execute('DELETE FROM games WHERE id=651');db.commit()
         print('OK: primeiro registro, empate zero, somente consulta, POST forjado/antigo bloqueado sem email, justificativa obrigatoria e auditada, administrador participante corrige/remove')
+        # Uploaded sheets live on disk, with metadata only in SQLite.
+        from urllib.request import Request
+        upload_tokens={}
+        def upload_sheet(who,filename,content,**extra):
+            form=get(who,'anexos.php?game=1')[1]
+            if 'name="csrf"' in form: upload_tokens[who]=csrf(form)
+            data=dict(csrf=upload_tokens[who],action='upload');data.update(extra)
+            boundary='sheet-fixture-boundary'
+            parts=[(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n').encode() for key,value in data.items()]
+            parts.append((f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()+content+b'\r\n')
+            parts.append(f'--{boundary}--\r\n'.encode())
+            with who.open(Request(base+'anexos.php?game=1',b''.join(parts),{'Content-Type':'multipart/form-data; boundary='+boundary}),timeout=10) as response:return response.read().decode()
+        assert get(guest,'anexos.php?game=1')[2].endswith('admin.php')
+        assert get(athlete,'anexos.php?game=650')[0]==403
+        png=(ROOT/'site/lago_de_pedra_256.png').read_bytes()
+        result_before=db.execute('SELECT score_a,score_b,played_at FROM games WHERE id=1').fetchone()
+        assert 'PDF, JPG ou PNG' in upload_sheet(athlete,'script.php',b'<?php echo 123;')
+        upload_sheet(athlete,'fake.png',b'not an image at all')
+        upload_sheet(athlete,'large.png',b'x'*(2*1024*1024+1))
+        upload_sheet(athlete,'csrf.png',png,csrf='wrong')
+        assert db.execute('SELECT COUNT(*) FROM game_attachments').fetchone()[0]==0
+        upload_sheet(athlete,'frente.png',png)
+        aid=db.execute('SELECT id FROM game_attachments').fetchone()[0]
+        disk=app/'sumulas'/(aid+'.php')
+        assert disk.exists() and disk.read_bytes().endswith(png)
+        assert not any(col[2].upper()=='BLOB' for col in db.execute('PRAGMA table_info(game_attachments)'))
+        assert subprocess.check_output(PHP_ARGS+[str(disk)])==b'' # PHP wrapper cannot serve the bytes directly.
+        with athlete.open(base+'anexos.php?file='+aid+'&download=1') as response:
+            assert response.read()==png and response.headers['Content-Type']=='image/png'
+        with athlete.open(base+'anexos.php?file='+aid) as response:
+            assert 'sandbox' in response.headers['Content-Security-Policy']
+        db.execute('UPDATE users SET player_id=3 WHERE id=2');db.commit()
+        assert get(athlete,'anexos.php?file='+aid)[0]==404
+        db.execute('UPDATE users SET player_id=1 WHERE id=2');db.commit()
+        form=get(athlete,'anexos.php?game=1')[1]
+        get(athlete,'anexos.php?game=1',dict(csrf=csrf(form),action='remove',id=aid))
+        upload_sheet(athlete,'replacement.png',png,replace=aid)
+        assert db.execute('SELECT removed_at FROM game_attachments WHERE id=?',(aid,)).fetchone()[0] is None
+        upload_sheet(athlete,'verso.png',png)
+        upload_sheet(athlete,'terceiro.png',png)
+        assert db.execute('SELECT COUNT(*) FROM game_attachments WHERE removed_at IS NULL').fetchone()[0]==2
+        upload_sheet(admin,'corrigida.png',png,replace=aid)
+        assert db.execute('SELECT removed_at FROM game_attachments WHERE id=?',(aid,)).fetchone()[0]
+        assert get(admin,'anexos.php?file='+aid)[0]==404
+        assert db.execute('SELECT score_a,score_b,played_at FROM games WHERE id=1').fetchone()==result_before
+        assert 'Súmula anexada' in get(athlete,'admin.php')[1]
+        # Full archive and restore recover physical files as well as metadata.
+        time.sleep(1.05)
+        backups_before={p.name for p in (app/'backups').glob('*.sqlite')}
+        form=get(admin,'backup.php')[1]
+        get(admin,'backup.php',dict(csrf=csrf(form),action='create'))
+        full_name=next(p.name for p in (app/'backups').glob('*.sqlite') if p.name not in backups_before)
+        with admin.open(base+'backup.php?'+urlencode(dict(download=full_name,complete=1))) as response:
+            archive=zipfile.ZipFile(io.BytesIO(response.read()))
+            assert full_name in archive.namelist()
+            assert archive.read(full_name+'.files/'+aid+'.php')==disk.read_bytes()
+            assert full_name+'.files/.htaccess' in archive.namelist()
+        live_id=db.execute('SELECT id FROM game_attachments WHERE removed_at IS NULL LIMIT 1').fetchone()[0]
+        live_file=app/'sumulas'/(live_id+'.php')
+        saved_bytes=live_file.read_bytes();live_file.unlink()
+        time.sleep(1.05)
+        form=get(admin,'backup.php')[1]
+        get(admin,'backup.php',dict(csrf=csrf(form),action='restore',backup_name=full_name))
+        assert live_file.read_bytes()==saved_bytes
+        assert db.execute('SELECT COUNT(*) FROM game_attachments').fetchone()[0]==3
+        form=get(admin,'anexos.php?game=1')[1]
+        get(admin,'anexos.php?game=1',dict(csrf=csrf(form),action='remove',id=live_id))
+        assert get(athlete,'anexos.php?file='+live_id)[0]==404
+        time.sleep(1.05)
+        form=get(admin,'backup.php')[1]
+        get(admin,'backup.php',dict(csrf=csrf(form),action='restore',backup_name=full_name))
+        assert get(admin,'anexos.php?file='+live_id)[0]==404 # older backup cannot reactivate removed attachments
+        preview=get(admin,'anexos.php?game=1')[1]
+        for asset in ['admin.css','attachments.css','footer.css','credits.css','credits.js']:
+            preview=preview.replace('="'+asset,'="../painel_php/public/'+asset)
+        (ROOT/'previews/attachments.html').write_text(preview,encoding='utf-8')
+
+        print('OK: disk uploads, validation, owner permissions, admin replacement, unchanged scores, full ZIP and file recovery')
         # Post-match signatures: individual capabilities plus creator approval, no result changes.
         assert get(guest,'confirmacoes.php')[2].endswith('admin.php')
         assert get(athlete,'confirmacoes.php')[0]==403

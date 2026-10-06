@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 1.61 — 06/10/2026
+
+- Anexos de súmula por jogo: até dois arquivos PDF/JPG/PNG de 2 MB, com consulta e download reservados aos participantes e administradores. Disponível mesmo após o placar ser registrado.
+- Arquivos fora do SQLite, em pasta protegida e com nomes aleatórios; banco guarda somente metadados. Envio não altera placar/data. Substituição e remoção restritas aos administradores e auditadas; versões retiradas da consulta permanecem no histórico privado.
+- Backup copia banco e anexos, com download completo em ZIP sem exigir ZipArchive. Restauração recupera arquivos ausentes e preserva metadados atuais, sem reativar anexos removidos. Backup somente do banco continua disponível e identificado.
+- Guia atualizado com envio pelo celular, limites, privacidade e restauração do ZIP completo. Testes isolados de arquivos, permissões e recuperação.
+
 ## 1.60 — 04/10/2026
 
 - Súmulas confirmadas por links passam a ter uma página de impressão no padrão oficial: logos, identificação, placar, registro do jogo, observações, duas assinaturas e aval da organização.

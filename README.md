@@ -275,3 +275,15 @@ Em **Confirmar partidas**, administradores filtram jogos com placar e data já o
 - Migração automática ao abrir a nova área; tabela `match_confirmations`, independente dos resultados. Restauração preserva documentos atuais, importa ausentes e cancela pendentes para não reativar links.
 
 A impressão das confirmações concluídas usa `public/sumula-confirmada.php`, com o CSS da súmula oficial e complementos para as assinaturas salvas. Acesso somente administrativo; documentos pendentes não podem ser impressos nessa rota. Placar/data corrigidos marcam o documento anterior como histórico.
+
+## Anexos de súmulas em disco
+
+O painel oferece **Anexar súmula** em cada jogo, inclusive com placar já registrado. Dois arquivos ativos de 2 MB (PDF/JPG/PNG), sem modificar resultado. Participantes acessam somente seus jogos; administradores podem substituir/remover com auditoria.
+
+- Metadados em `game_attachments`; bytes fora do SQLite. Diretório padrão: `sumulas` ao lado do banco configurado. Pode ser alterado pela chave opcional `attachment_directory` para um caminho privado fora da raiz pública.
+- Pasta criada com `.htaccess` negando acesso. Arquivos aleatórios `.php` contêm um prefixo que encerra execução e compilação antes dos bytes; acesso autenticado remove esse prefixo na resposta. A hospedagem precisa executar PHP corretamente. Nginx deve negar também acesso direto à pasta privada.
+- Validação de tamanho, extensão e cabeçalho PDF / estrutura de imagem; não substitui antivírus. Download com tipo controlado, `nosniff`, cache privado e sandbox. Não publicar a pasta dos anexos no GitHub.
+- Remoção lógica: arquivos antigos preservados para histórico, consumindo armazenamento. Não há purga automática.
+- Backup novo guarda `.sqlite` e pasta correspondente `.sqlite.files`. **Baixar completo (ZIP)** transmite ambos, sem carregar o conjunto em memória nem exigir ZipArchive. Inclui versões removidas. Limite do ZIP: aproximadamente 4 GB.
+- Para restaurar noutra hospedagem: extrair ambos na pasta de backups configurada e usar a restauração pelo acesso principal. A rotina verifica hashes, recupera arquivos ausentes, preserva metadados atuais e importa ausentes. Não reativa anexos removidos. Falhas de integridade impedem a restauração.
+- Pacotes de atualização incluem somente código. Não substituem config, banco ou arquivos enviados; não exigem tarefa agendada.

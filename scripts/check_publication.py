@@ -20,8 +20,8 @@ for name in filter(None, paths):
     path = Path(name)
     if (path.name in {'config.php', 'data.js', 'seed.php'} or
             path.suffix.lower() in {'.sqlite', '.db', '.zip', '.xlsx', '.docx', '.csv', '.pdf', '.log'} or
-            any(part in {'backups', 'previews', '.venv'} for part in path.parts) or
-            path.name.startswith('.env') or '.sqlite-' in path.name):
+            any(part in {'backups', 'previews', '.venv', 'sumulas'} for part in path.parts) or
+            path.name.startswith('.env') or '.sqlite-' in path.name or any(part.endswith('.sqlite.files') for part in path.parts)):
         errors.append(name + ': arquivo privado ou gerado')
     content = subprocess.check_output(GIT + ['show', ':' + name], cwd=ROOT)
     if any(re.search(pattern, content) for pattern in patterns):

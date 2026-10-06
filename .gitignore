@@ -46,3 +46,7 @@
 !/scripts/check_complaints_browser.py
 
 !/scripts/check_confirmations_browser.py
+
+# Private uploaded sheets (PHP-wrapped binary files).
+**/sumulas/
+**/*.sqlite.files/
