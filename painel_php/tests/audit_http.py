@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.61' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.63' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.61' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.63' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.61' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.63' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.61 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.63 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -497,6 +497,29 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         form=get(admin,'backup.php')[1]
         get(admin,'backup.php',dict(csrf=csrf(form),action='restore',backup_name=full_name))
         assert get(admin,'anexos.php?file='+live_id)[0]==404 # older backup cannot reactivate removed attachments
+        # Attachment filtering intersects existing restrictions before pagination.
+        def filtered_ids(who,query):
+            return set(map(int,re.findall(r'id="game-(\d+)"',get(who,'admin.php?'+query)[1])))
+        assert filtered_ids(admin,'attachment=with')=={1}
+        assert filtered_ids(athlete,'attachment=with')=={1}
+        assert 1 not in filtered_ids(admin,'attachment=without')
+        assert filtered_ids(admin,'attachment=with&player=1&opponent=2')=={1}
+        assert filtered_ids(admin,'attachment=with&player=2&opponent=1')=={1}
+        assert not filtered_ids(admin,'attachment=with&player=3')
+        played=db.execute('SELECT score_a IS NOT NULL AND score_b IS NOT NULL FROM games WHERE id=1').fetchone()[0]
+        assert filtered_ids(admin,'attachment=with&status='+('played' if played else 'pending'))=={1}
+        assert not filtered_ids(admin,'attachment=with&status='+('pending' if played else 'played'))
+        page=get(admin,'admin.php?attachment=without&page=2')[1]
+        assert 'attachment=without' in page and len(filtered_ids(admin,'attachment=without&page=2'))==24
+        assert filtered_ids(admin,'attachment=invalid')==filtered_ids(admin,'')
+        allowed={r[0] for r in db.execute('SELECT id FROM games WHERE player_a_id=1 OR player_b_id=1')}
+        assert filtered_ids(athlete,'attachment=without&player=3').issubset(allowed)
+        remaining=db.execute('SELECT id FROM game_attachments WHERE removed_at IS NULL').fetchone()[0]
+        db.execute("UPDATE game_attachments SET removed_at='test' WHERE id=?",(remaining,));db.commit()
+        assert not filtered_ids(admin,'attachment=with')
+        assert 1 in filtered_ids(admin,'attachment=without')
+        db.execute('UPDATE game_attachments SET removed_at=NULL WHERE id=?',(remaining,));db.commit()
+        print('OK: attachment filters, combined status/players, pagination, invalid values, removed files and athlete scope')
         preview=get(admin,'anexos.php?game=1')[1]
         for asset in ['admin.css','attachments.css','footer.css','credits.css','credits.js']:
             preview=preview.replace('="'+asset,'="../painel_php/public/'+asset)

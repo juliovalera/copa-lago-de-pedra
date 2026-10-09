@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.63 - 08/10/2026
+
+- Painel: filtro Súmula anexada (todos, com anexo ou sem anexo), combinado com os filtros existentes e preservado na paginação.
+- Considera apenas anexos ativos de fotos/PDFs; mantém as restrições de acesso dos botonistas. Guia atualizado.
+
 ## 1.62 - 08/10/2026
 
 - Evolução: comparação opcional do jogador principal com até três outros botonistas, mantendo a consulta individual.
