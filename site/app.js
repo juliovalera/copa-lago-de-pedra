@@ -141,6 +141,8 @@
 
   $('#history-player').innerHTML = [...players].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p => `<option value="${p.id}">${escape(p.name)}</option>`).join('');
   function renderHistory() {
+    syncHistoryPlayers();
+    if ($('#history-compare').checked && comparisonSelects.some(s => s.value)) { renderComparison(); return; }
     const p = players.find(p => p.id === $('#history-player').value);
     const history = [...p.history].sort((a,b) => (a.date || '').localeCompare(b.date || ''));
     const dateLabel = date => date ? date.split('-').reverse().join('/') : '';
@@ -154,6 +156,45 @@
     $('#history-content').innerHTML = `${warning}<p>Posição ao final de cada data com jogos, considerando os resultados registrados. ${history.length === 1 ? 'Esta é a primeira data registrada; novas datas mostrarão a evolução.' : ''}</p><svg class="history-chart" viewBox="0 0 620 260" role="img" aria-label="Evolução de ${escape(p.name)} por data. Posições menores ficam no alto. Valores na tabela abaixo."><path d="M45 20 V220 H575" fill="none" stroke="#ced8c3"/><text x="10" y="24">1º</text><text x="5" y="220">${players.length}º</text>${history.map((h,i) => `${i ? `<line x1="${x(i-1)}" y1="${y(history[i-1].position)}" x2="${x(i)}" y2="${y(h.position)}" stroke="#347758" stroke-width="3"/>` : ''}<circle cx="${x(i)}" cy="${y(h.position)}" r="5" fill="#123e32"><title>${escape(dateLabel(h.date))}: ${h.position}º</title></circle>`).join('')}<text x="${x(0)}" y="246" text-anchor="middle">${escape(dateLabel(history[0].date))}</text>${history.length > 1 ? `<text x="555" y="246" text-anchor="middle">${escape(dateLabel(history[history.length-1].date))}</text>` : ''}</svg><table class="history-table"><caption>Posições de ${escape(p.name)} por data dos jogos</caption><thead><tr><th scope="col">Data</th><th scope="col">Posição</th><th scope="col">Pontos</th></tr></thead><tbody>${history.map(h => `<tr><td>${escape(dateLabel(h.date))}</td><td>${h.position}º</td><td>${h.points}</td></tr>`).join('')}</tbody></table>`;
   }
   $('#history-player').addEventListener('change', renderHistory);
+  const comparisonSelects = [...document.querySelectorAll('[data-history-peer]')];
+  comparisonSelects.forEach(select => {
+    select.innerHTML = '<option value="">Não comparar</option>' + $('#history-player').innerHTML;
+    select.addEventListener('change', renderHistory);
+  });
+  function syncHistoryPlayers() {
+    const used = new Set([$('#history-player').value]);
+    comparisonSelects.forEach(select => {
+      if (used.has(select.value)) select.value = '';
+      if (select.value) used.add(select.value);
+    });
+    comparisonSelects.forEach(select => {
+      for (const option of select.options) option.disabled = !!option.value && option.value !== select.value && used.has(option.value);
+    });
+    $('#history-comparisons').hidden = !$('#history-compare').checked;
+  }
+  $('#history-compare').addEventListener('change', renderHistory);
+  function renderComparison() {
+    const ids = [$('#history-player').value, ...comparisonSelects.map(s => s.value)].filter(Boolean);
+    const selected = ids.map(id => players.find(p => p.id === id)).filter(Boolean);
+    const dates = [...new Set(selected.flatMap(p => p.history.map(h => h.date).filter(Boolean)))].sort();
+    const label = date => date.split('-').reverse().join('/');
+    const colors = ['#123e32', '#155c9e', '#9b3b12', '#753e91'];
+    const dashes = ['', '9 4', '2 4', '10 3 2 3'];
+    const warning = data.historyUndatedGames ? `<p role="note">Histórico parcial: ${data.historyUndatedGames} jogo(s) com resultado estão sem data válida e não entram neste gráfico. Eles continuam contando na classificação atual.</p>` : '';
+    if (!dates.length) {
+      $('#history-content').innerHTML = `${warning}<div class="history-empty"><h3>A história está começando</h3><p>A evolução aparecerá quando houver resultados com a data do jogo registrada.</p></div>`;
+      return;
+    }
+    const x = i => dates.length === 1 ? 310 : 65 + i / (dates.length - 1) * 490;
+    const y = position => 20 + (position - 1) / Math.max(1, players.length - 1) * 200;
+    const series = selected.map(p => new Map(p.history.map(h => [h.date, h])));
+    const lines = selected.map((p, n) => `<g data-history-series="${escape(p.id)}">${dates.map((date, i) => {
+      const h = series[n].get(date), previous = i ? series[n].get(dates[i-1]) : null;
+      if (!h) return '';
+      return `${previous ? `<line x1="${x(i-1)}" y1="${y(previous.position)}" x2="${x(i)}" y2="${y(h.position)}" stroke="${colors[n]}" stroke-width="3" stroke-dasharray="${dashes[n]}"/>` : ''}<circle cx="${x(i)}" cy="${y(h.position)}" r="${6-n}" fill="${colors[n]}" stroke="white" stroke-width="1"><title>${escape(p.name)} — ${label(date)}: ${h.position}º, ${h.points} pontos</title></circle>`;
+    }).join('')}</g>`).join('');
+    $('#history-content').innerHTML = `${warning}<p>Compare a posição ao final de cada data com jogos. Quanto mais alto no gráfico, melhor a posição. ${dates.length === 1 ? 'Esta é a primeira data registrada.' : ''}</p><ul class="history-legend">${selected.map((p,n) => `<li><svg viewBox="0 0 48 16" aria-hidden="true"><line x1="0" y1="8" x2="48" y2="8" stroke="${colors[n]}" stroke-width="3" stroke-dasharray="${dashes[n]}"/></svg>${escape(p.name)}</li>`).join('')}</ul><svg class="history-chart" viewBox="0 0 620 260" role="img" aria-label="Comparação das posições de ${escape(selected.map(p=>p.name).join(', '))}. Valores na tabela abaixo."><path d="M45 20 V220 H575" fill="none" stroke="#ced8c3"/><text x="10" y="24">1º</text><text x="5" y="220">${players.length}º</text>${lines}<text x="${x(0)}" y="246" text-anchor="middle">${label(dates[0])}</text>${dates.length > 1 ? `<text x="555" y="246" text-anchor="middle">${label(dates.at(-1))}</text>` : ''}</svg><div class="history-comparison-scroll" tabindex="0" role="region" aria-label="Tabela de comparação por data"><table class="history-comparison-table"><caption>Posição e pontos por data dos jogos</caption><thead><tr><th scope="col">Data</th>${selected.map(p=>`<th scope="col">${escape(p.name)}</th>`).join('')}</tr></thead><tbody>${dates.map(date=>`<tr><th scope="row">${label(date)}</th>${series.map(s=>{const h=s.get(date);return `<td>${h ? `${h.position}º · ${h.points} pontos` : 'Sem registro'}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div><p class="history-comparison-note">As cores e os traços identificam cada botonista. Linhas podem se sobrepor em caso de empate. “Sem registro” indica ausência de histórico naquela data.</p>`;
+  }
   let gamePage=1;
   const pageSize=26;
   $('#games-summary').textContent = `${data.games.length} jogos previstos · ${data.playedGames} com resultado · ${data.pendingGames} sem resultado`;

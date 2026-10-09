@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.62 - 08/10/2026
+
+- Evolução: comparação opcional do jogador principal com até três outros botonistas, mantendo a consulta individual.
+- Gráfico com cores e traços distintos, legenda e tabela por data; seleções sem jogadores repetidos e adaptação ao celular.
+- Guia atualizado. A comparação usa o histórico existente, sem alterar banco ou critérios de classificação.
+
 ## 1.61 — 06/10/2026
 
 - Anexos de súmula por jogo: até dois arquivos PDF/JPG/PNG de 2 MB, com consulta e download reservados aos participantes e administradores. Disponível mesmo após o placar ser registrado.

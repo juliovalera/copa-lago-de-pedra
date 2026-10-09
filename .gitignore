@@ -50,3 +50,5 @@
 # Private uploaded sheets (PHP-wrapped binary files).
 **/sumulas/
 **/*.sqlite.files/
+
+!/scripts/check_history_browser.py
