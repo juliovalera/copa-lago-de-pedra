@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.64 - 09/10/2026
+
+- Página pública: o cartão Mais gols marcados passa a se chamar Artilheiro, mantendo a contagem de gols e a indicação de empates.
+
 ## 1.63 - 08/10/2026
 
 - Painel: filtro Súmula anexada (todos, com anexo ou sem anexo), combinado com os filtros existentes e preservado na paginação.

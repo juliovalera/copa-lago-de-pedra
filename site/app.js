@@ -65,7 +65,7 @@
   $('#summary').innerHTML = [
     ['PARTICIPANTES', players.length, `${players.filter(p => p.played > 0).length} já entraram em jogo`, '◉', false],
     ['NA LIDERANÇA', leader.name, `${leader.points} pontos · classificação recalculada`, '⚑', true],
-    ['MAIS GOLS MARCADOS', bestScorers.length > 1 ? `${bestScorers.length} empatados` : bestScorers[0].name.split(' ')[0], `${scorers[0].goalsFor} gols · placares registrados`, '◎', true],
+    ['ARTILHEIRO', bestScorers.length > 1 ? `${bestScorers.length} empatados` : bestScorers[0].name.split(' ')[0], `${scorers[0].goalsFor} gols · placares registrados`, '◎', true],
     ['PONTOS DISTRIBUÍDOS', data.totals.points, '3 por vitória · 1 por empate', '↗', false]
   ].map(([label,value,sub,symbol,name]) => `<article class="stat"><span class="stat-label">${label}</span><span class="stat-symbol" aria-hidden="true">${symbol}</span><strong class="stat-value${name?' name':''}">${escape(value)}</strong><span class="stat-sub">${escape(sub)}</span></article>`).join('');
 
