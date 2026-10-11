@@ -57,6 +57,7 @@ try:
         (ROOT/'previews/history.html').write_text(html,encoding='utf-8')
         call('Page.navigate',dict(url=base+'/previews/history.html#evolucao'))
         time.sleep(.6)
+        assert js("document.querySelector('#competition-progress').value===31 && document.querySelector('#competition-progress').max===32 && document.querySelector('.competition-progress-heading strong').textContent==='96,9%'")
         js("location.hash='jogos'")
         assert js("JSON.stringify([...document.querySelector('#game-date').options].map(o=>o.value))===JSON.stringify(['','2026-10-08','2026-09-20'])")
         js("var d=document.querySelector('#game-date');d.value='2026-10-08';d.dispatchEvent(new Event('change'))")
@@ -73,6 +74,7 @@ try:
         assert js("document.querySelector('#game-date').value==='' && document.querySelector('#games-count').textContent==='32 de 32 jogos'")
         js("var d=document.querySelector('#game-date');d.value='2026-09-20';d.dispatchEvent(new Event('change'))")
         assert js("document.querySelector('#games-count').textContent.startsWith('1 jogo realizado')")
+        assert js("document.querySelector('#competition-progress').value===31 && document.querySelector('#competition-progress').max===32")
         for width in [320,390,768,1280]:
             call('Emulation.setDeviceMetricsOverride',dict(width=width,height=900,deviceScaleFactor=1,mobile=False))
             assert js('document.documentElement.scrollWidth<=innerWidth'),width
@@ -106,6 +108,23 @@ try:
         call('Emulation.setDeviceMetricsOverride',dict(width=390,height=1200,deviceScaleFactor=1,mobile=False))
         (ROOT/'previews/history.png').write_bytes(base64.b64decode(call('Page.captureScreenshot')['data']))
         print('OK: individual/comparison, four series, duplicates, escaping, exact table values, missing history, single date, empty history and mobile layout')
+
+        # Reuse the fictitious page to cover empty, pending and completed championships.
+        import copy
+        for total,played,expected in [(0,0,'0%'),(10,0,'0%'),(10,10,'100%'),(650,85,'13,1%')]:
+            scenario=copy.deepcopy(fixture)
+            scenario['games']=[dict(id=str(i),game=i,round=1,turn=1,a='Ana',b='Bruno',status='played' if i<played else 'pending',scoreA=0,scoreB=0,playedAt='2026-10-08') for i in range(total)]
+            scenario_html=re.sub(r'<script>window.COPA_DATA=.*?;</script>',lambda m:'<script>window.COPA_DATA='+json.dumps(scenario)+';</script>',html)
+            (ROOT/'previews/progress-test.html').write_text(scenario_html,encoding='utf-8')
+            call('Page.navigate',dict(url=base+f'/previews/progress-test.html?total={total}&played={played}#jogos'));time.sleep(.3)
+            assert js("document.querySelector('.competition-progress-heading strong').textContent")==expected
+            assert js("document.querySelector('#competition-progress').value")==played
+            assert js("document.querySelector('#competition-progress').max")==max(1,total)
+        call('Emulation.setDeviceMetricsOverride',dict(width=390,height=900,deviceScaleFactor=1,mobile=False))
+        js("document.querySelector('#games-summary').scrollIntoView()")
+        assert js('document.documentElement.scrollWidth<=innerWidth')
+        (ROOT/'previews/progress.png').write_bytes(base64.b64decode(call('Page.captureScreenshot')['data']))
+        print('OK: progress 0/100/13.1 percent, empty championship, accessible native progress and unaffected by filters')
 
 finally:
     process.terminate()

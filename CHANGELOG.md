@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.70 - 11/10/2026
+
+- Aba Jogos: barra de progresso acessível, porcentagem e contagem de resultados registrados no campeonato inteiro, independente dos filtros.
+- Indicador se atualiza com os dados carregados; contempla campeonato sem jogos, sem resultados e concluído. Guia atualizado.
+
 ## 1.69 - 11/10/2026
 
 - Painel: filtro Data do jogo, combinado com os demais filtros; datas válidas dos jogos acessíveis, em ordem decrescente.

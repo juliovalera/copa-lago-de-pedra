@@ -197,7 +197,11 @@
   }
   let gamePage=1;
   const pageSize=26;
-  $('#games-summary').textContent = `${data.games.length} jogos previstos · ${data.playedGames} com resultado · ${data.pendingGames} sem resultado`;
+  const totalGames = data.games.length;
+  const completedGames = data.games.filter(g => g.status === 'played').length;
+  const progressPercent = totalGames ? completedGames / totalGames * 100 : 0;
+  const progressLabel = progressPercent.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + '%';
+  $('#games-summary').innerHTML = `<div class="competition-progress-heading"><label for="competition-progress">Progresso do campeonato</label><strong>${progressLabel}</strong></div><progress id="competition-progress" max="${totalGames || 1}" value="${completedGames}" aria-valuetext="${progressLabel}: ${completedGames} de ${totalGames} jogos com resultado">${progressLabel}</progress><div>${totalGames} jogos previstos · ${completedGames} com resultado · ${totalGames-completedGames} sem resultado</div><p class="competition-progress-note">Baseado nos resultados registrados de todo o campeonato, independentemente dos filtros.</p>`;
   $('#game-player').insertAdjacentHTML('beforeend', [...players].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${escape(p.name)}">${escape(p.name)}</option>`).join(''));
   $('#game-opponent').insertAdjacentHTML('beforeend', [...$('#game-player').options].slice(1).map(o=>o.outerHTML).join(''));
   function syncGamePlayers() {
