@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-// Centésimos inteiros: a próxima implementação usa 168 (versão 1.68).
-const COPA_VERSION_NUMBER = 167;
+// Centésimos inteiros: a próxima implementação usa 169 (versão 1.69).
+const COPA_VERSION_NUMBER = 168;
 function copaVersion(): string { return number_format(COPA_VERSION_NUMBER / 100, 2, '.', ''); }
 function copaVersionButton(): string
 {

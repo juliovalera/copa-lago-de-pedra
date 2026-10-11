@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.68 - 11/10/2026
+
+- Anexos: fotos JPG/PNG acima de 2 MB são reduzidas automaticamente no navegador, com prévia ampliável e tamanho final antes do envio. Original preservada; versão reduzida enviada em JPEG.
+- PDFs mantêm limite de 2 MB. Falhas de preparação bloqueiam o envio; limites e validações do servidor preservados.
+- Fotos de entrada limitadas a 40 MB e 80 megapixels para a preparação no navegador. Guia atualizado.
+
 ## 1.67 - 11/10/2026
 
 - Jogos na área pública: filtro Data do jogo, com datas válidas de resultados da mais recente para a mais antiga.

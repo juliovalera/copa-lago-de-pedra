@@ -278,6 +278,8 @@ A impressão das confirmações concluídas usa `public/sumula-confirmada.php`, 
 
 ## Anexos de súmulas em disco
 
+Fotos JPG/PNG acima de 2 MB são preparadas no navegador por `public/attachments.js`, com prévia antes de enviar. A cópia reduzida usa JPEG, com fundo branco para transparência; o original não é alterado. Canvas e DataTransfer são necessários para essa redução. Sem suporte, o usuário recebe orientação para escolher outro arquivo/navegador. Fotos de entrada: até 40 MB e 80 megapixels, sujeitas à memória do aparelho. PDFs e arquivos enviados ao servidor continuam limitados a 2 MB. Não exige serviço externo, agendamento ou extensão PHP adicional.
+
 O painel oferece **Anexar súmula** em cada jogo, inclusive com placar já registrado. Dois arquivos ativos de 2 MB (PDF/JPG/PNG), sem modificar resultado. Participantes acessam somente seus jogos; administradores podem substituir/remover com auditoria.
 
 - Metadados em `game_attachments`; bytes fora do SQLite. Diretório padrão: `sumulas` ao lado do banco configurado. Pode ser alterado pela chave opcional `attachment_directory` para um caminho privado fora da raiz pública.

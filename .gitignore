@@ -52,3 +52,5 @@
 **/*.sqlite.files/
 
 !/scripts/check_history_browser.py
+
+!/scripts/check_attachments_browser.py
