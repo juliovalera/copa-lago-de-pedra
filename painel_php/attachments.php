@@ -3,6 +3,21 @@ declare(strict_types=1);
 
 const ATTACHMENT_PREFIX = "<?php http_response_code(404); exit; __halt_compiler();\n";
 
+// Rebuild only known filters; never redirect to a user-provided URL.
+function panelReturnUrl(): string
+{
+    $params = [];
+    foreach (['page', 'round', 'player', 'opponent'] as $key) {
+        $value = filter_input(INPUT_GET, $key, FILTER_VALIDATE_INT);
+        if ($value && $value > 0) $params[$key] = $value;
+    }
+    foreach (['status' => ['played', 'pending'], 'attachment' => ['with', 'without']] as $key => $allowed) {
+        if (in_array($_GET[$key] ?? '', $allowed, true)) $params[$key] = $_GET[$key];
+    }
+    if (is_string($_GET['q'] ?? null) && trim($_GET['q']) !== '') $params['q'] = trim($_GET['q']);
+    return 'admin.php' . ($params ? '?' . http_build_query($params) : '');
+}
+
 function initialiseAttachments(): void
 {
     db()->exec('CREATE TABLE IF NOT EXISTS game_attachments (

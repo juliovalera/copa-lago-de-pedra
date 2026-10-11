@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.65' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.66' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.65' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.66' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.65' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.66' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.65 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.66 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -433,14 +433,15 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         from urllib.request import Request
         upload_tokens={}
         def upload_sheet(who,filename,content,**extra):
-            form=get(who,'anexos.php?game=1')[1]
+            query=extra.pop('_query','')
+            form=get(who,'anexos.php?game=1'+query)[1]
             if 'name="csrf"' in form: upload_tokens[who]=csrf(form)
             data=dict(csrf=upload_tokens[who],action='upload');data.update(extra)
             boundary='sheet-fixture-boundary'
             parts=[(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n').encode() for key,value in data.items()]
             parts.append((f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()+content+b'\r\n')
             parts.append(f'--{boundary}--\r\n'.encode())
-            with who.open(Request(base+'anexos.php?game=1',b''.join(parts),{'Content-Type':'multipart/form-data; boundary='+boundary}),timeout=10) as response:return response.read().decode()
+            with who.open(Request(base+'anexos.php?game=1'+query,b''.join(parts),{'Content-Type':'multipart/form-data; boundary='+boundary}),timeout=10) as response:return response.read().decode()
         assert get(guest,'anexos.php?game=1')[2].endswith('admin.php')
         assert get(athlete,'anexos.php?game=650')[0]==403
         png=(ROOT/'site/lago_de_pedra_256.png').read_bytes()
@@ -450,7 +451,17 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         upload_sheet(athlete,'large.png',b'x'*(2*1024*1024+1))
         upload_sheet(athlete,'csrf.png',png,csrf='wrong')
         assert db.execute('SELECT COUNT(*) FROM game_attachments').fetchone()[0]==0
-        upload_sheet(athlete,'frente.png',png)
+        context='&player=1&opponent=2&round=1&status=played&attachment=without&page=2&q=Teste%20%26%20nome'
+        uploaded=upload_sheet(athlete,'frente.png',png,_query=context)
+        from html import unescape
+        back=unescape(re.search(r'href="([^"]+)">← Voltar ao painel',uploaded).group(1))
+        from urllib.parse import parse_qs, urlsplit
+        assert parse_qs(urlsplit(back).query)==parse_qs(context[1:]) and back.startswith('admin.php?')
+        assert 'https://example.invalid' not in get(athlete,'anexos.php?game=1&return=https://example.invalid')[1]
+        panel=get(admin,'admin.php?player=1&opponent=2&attachment=with')[1]
+        assert 'game=1&amp;' in panel and 'opponent=2' in panel
+        assert 'attachment=without' in get(athlete,back)[2]
+        print('OK: upload preserves panel filters and local return link; filters remain active after returning')
         aid=db.execute('SELECT id FROM game_attachments').fetchone()[0]
         disk=app/'sumulas'/(aid+'.php')
         assert disk.exists() and disk.read_bytes().endswith(png)

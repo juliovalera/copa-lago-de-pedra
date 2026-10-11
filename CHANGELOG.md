@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.66 - 11/10/2026
+
+- Anexos preservam os filtros e a página de origem ao enviar, substituir ou remover arquivos e voltar ao painel.
+- Retorno limitado aos filtros conhecidos do painel, sem aceitar redirecionamentos externos. Guia atualizado.
+
 ## 1.65 - 11/10/2026
 
 - Painel preserva filtros e paginação ao salvar resultados, inclusive em erros de validação ou conflitos.

@@ -18,6 +18,9 @@ if (isset($_GET['file'])) {
         $handle=fopen($path,'rb'); fseek($handle,strlen(ATTACHMENT_PREFIX)); fpassthru($handle); fclose($handle); exit;
     } catch (Throwable $e) { http_response_code(404); exit('Anexo indisponível para esta conta.'); }
 }
+$returnUrl = panelReturnUrl();
+$returnQuery = parse_url($returnUrl, PHP_URL_QUERY);
+$returnSuffix = $returnQuery ? '&' . $returnQuery : '';
 $gameId=(int)($_GET['game']??0);
 try { $game=attachmentGame($gameId); } catch (InvalidArgumentException $e) { http_response_code(403); exit(h($e->getMessage())); }
 $csrf=$_SESSION['attachment_csrf']??=bin2hex(random_bytes(32)); $error='';
@@ -31,14 +34,14 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         } elseif (($_POST['action']??'')==='upload') {
             attachmentUpload($gameId,$_FILES['file']??[],is_string($_POST['replace']??null)?$_POST['replace']:'');
         } else throw new InvalidArgumentException('Escolha uma ação válida.');
-        header('Location: anexos.php?game='.$gameId.'&saved=1'); exit;
+        header('Location: anexos.php?game='.$gameId.$returnSuffix.'&saved=1'); exit;
     } catch (InvalidArgumentException $e) { $error=$e->getMessage(); }
     catch (Throwable $e) { $error='Não foi possível guardar a alteração. Confira o espaço e as permissões da pasta de anexos com a administração.'; }
 }
 $q=db()->prepare('SELECT * FROM game_attachments WHERE game_id=? AND removed_at IS NULL ORDER BY created_at,id'); $q->execute([$gameId]);
 $rows=array_values(array_filter($q->fetchAll(),static fn($r)=>hasFullAccess() || in_array((int)currentUser()['player_id'],[(int)$r['player_a_id'],(int)$r['player_b_id']],true)));
 ?>
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Anexos da súmula</title><link rel="stylesheet" href="admin.css"><link rel="stylesheet" href="attachments.css?v=<?= copaVersion() ?>"></head><body><main class="admin attachments-page"><a class="button button-outline-dark" href="admin.php">← Painel</a><h1>Anexos da súmula</h1><h2><?= h($game['a']) ?> × <?= h($game['b']) ?></h2><p>Rodada <?= h($game['round_number']) ?> · Jogo <?= h($game['game_number']) ?></p><p>Envie uma foto ou PDF da súmula. Até dois arquivos de 2 MB por jogo, por exemplo frente e verso. Anexar não altera o placar nem a data.</p>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Anexos da súmula</title><link rel="stylesheet" href="admin.css"><link rel="stylesheet" href="attachments.css?v=<?= copaVersion() ?>"></head><body><main class="admin attachments-page"><a class="button button-outline-dark" href="<?= h($returnUrl) ?>">← Voltar ao painel</a><h1>Anexos da súmula</h1><h2><?= h($game['a']) ?> × <?= h($game['b']) ?></h2><p>Rodada <?= h($game['round_number']) ?> · Jogo <?= h($game['game_number']) ?></p><p>Envie uma foto ou PDF da súmula. Até dois arquivos de 2 MB por jogo, por exemplo frente e verso. Anexar não altera o placar nem a data.</p>
 <?php if ($error): ?><p class="error" role="alert"><?= h($error) ?></p><?php elseif (isset($_GET['saved'])): ?><p class="flash" role="status">Alteração dos anexos salva.</p><?php endif ?>
 <section aria-label="Arquivos anexados"><?php if (!$rows): ?><p>Nenhuma cópia anexada.</p><?php endif ?><?php foreach ($rows as $row): ?><article class="admin-card"><h3><?= h($row['filename']) ?></h3><p><?= h(round($row['size']/1024)) ?> KB · Enviado em <?= h(date('d/m/Y H:i',strtotime($row['created_at']))) ?> por <?= h($row['created_by']) ?></p><div class="attachment-actions"><a class="button button-outline-dark" href="?file=<?= h($row['id']) ?>" target="_blank" rel="noopener">Visualizar</a><a class="button button-outline-dark" href="?file=<?= h($row['id']) ?>&amp;download=1">Baixar</a><?php if (hasFullAccess()): ?><form method="post" onsubmit="return confirm('Remover este anexo da consulta do jogo?');"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="id" value="<?= h($row['id']) ?>"><button class="button button-danger" name="action" value="remove">Remover</button></form><?php endif ?></div></article><?php endforeach ?></section>
 <?php if (count($rows)<2 || hasFullAccess()): ?><section class="admin-card"><h2><?= $rows?(hasFullAccess()?'Adicionar ou substituir arquivo':'Adicionar arquivo'):'Anexar súmula' ?></h2><form class="attachment-upload" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="MAX_FILE_SIZE" value="2097152"><label>Arquivo (PDF, JPG ou PNG, até 2 MB)<input type="file" name="file" accept="application/pdf,image/jpeg,image/png" required></label><?php if (hasFullAccess() && $rows): ?><label>Destino<select name="replace"><?php if (count($rows)<2): ?><option value="">Adicionar novo anexo</option><?php endif ?><?php foreach ($rows as $r): ?><option value="<?= h($r['id']) ?>">Substituir <?= h($r['filename']) ?></option><?php endforeach ?></select></label><?php endif ?><button class="button button-primary" name="action" value="upload">Enviar arquivo</button></form></section><?php endif ?>
