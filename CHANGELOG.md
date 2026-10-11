@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.69 - 11/10/2026
+
+- Painel: filtro Data do jogo, combinado com os demais filtros; datas válidas dos jogos acessíveis, em ordem decrescente.
+- Data preservada ao salvar resultados, paginar e enviar/consultar anexos. Guia atualizado.
+
 ## 1.68 - 11/10/2026
 
 - Anexos: fotos JPG/PNG acima de 2 MB são reduzidas automaticamente no navegador, com prévia ampliável e tamanho final antes do envio. Original preservada; versão reduzida enviada em JPEG.

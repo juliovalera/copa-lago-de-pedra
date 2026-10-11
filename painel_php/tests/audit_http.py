@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.68' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.69' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.68' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.69' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.68' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.69' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.68 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.69 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -84,7 +84,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         normal_admin=client();get(normal_admin,'admin.php',{'login':'Gestor','password':'test-only'})
         assert get(normal_admin,'usuarios.php')[0]==403
         admin=client();status,html,_=get(admin,'admin.php',{'login':'','password':'test-only'})
-        filters={'player':1,'opponent':2,'round':1,'status':'pending','attachment':'without','q':'','page':1}
+        filters={'player':1,'opponent':2,'round':1,'status':'pending','attachment':'without','q':'','page':1,'date':'2026-09-20'}
         status,html,saved_url=get(admin,'admin.php?'+urlencode(filters),{'csrf':csrf(html),'reason':'Correcao conferida no teste','result_token':result_token(html),'game_id':1,'score_a':2,'score_b':1,'played_at':'2026-09-20'})
         assert all(f'{key}={value}' in saved_url for key,value in filters.items() if value!='')
         assert 'anexos.php?game=1' in html and 'id="game-1"' not in html
@@ -451,7 +451,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         upload_sheet(athlete,'large.png',b'x'*(2*1024*1024+1))
         upload_sheet(athlete,'csrf.png',png,csrf='wrong')
         assert db.execute('SELECT COUNT(*) FROM game_attachments').fetchone()[0]==0
-        context='&player=1&opponent=2&round=1&status=played&attachment=without&page=2&q=Teste%20%26%20nome'
+        context='&player=1&opponent=2&round=1&status=played&attachment=without&page=2&q=Teste%20%26%20nome&date=2026-09-20'
         uploaded=upload_sheet(athlete,'frente.png',png,_query=context)
         from html import unescape
         back=unescape(re.search(r'href="([^"]+)">← Voltar ao painel',uploaded).group(1))
@@ -515,6 +515,26 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         # Attachment filtering intersects existing restrictions before pagination.
         def filtered_ids(who,query):
             return set(map(int,re.findall(r'id="game-(\d+)"',get(who,'admin.php?'+query)[1])))
+        # Date filter uses played dates and intersects permissions/other filters.
+        before_dates=db.execute('SELECT id,score_a,score_b,played_at FROM games').fetchall()
+        try:
+            db.execute("UPDATE games SET score_a=0,score_b=0,played_at='2026-10-10' WHERE id<=30")
+            db.execute("UPDATE games SET score_a=1,score_b=0,played_at='2026-10-09' WHERE id=650")
+            db.commit()
+            page=get(admin,'admin.php?date=2026-10-10')[1]
+            assert len(filtered_ids(admin,'date=2026-10-10'))==24
+            assert filtered_ids(admin,'date=2026-10-10&page=2')==set(range(25,31))
+            assert 'date=2026-10-10' in page and 'em 10/10/2026' in page
+            assert filtered_ids(admin,'date=2026-10-10&attachment=with')=={1}
+            assert not filtered_ids(admin,'date=2026-10-10&status=pending')
+            assert filtered_ids(admin,'date=2026-10-09')=={650}
+            assert not filtered_ids(athlete,'date=2026-10-09&player=3')
+            assert filtered_ids(admin,'date=2026-02-30')==filtered_ids(admin,'')
+            options=re.search(r'id="game-date".*?</select>',get(athlete,'admin.php')[1]).group(0)
+            assert '2026-10-09' not in options
+        finally:
+            db.executemany('UPDATE games SET score_a=?,score_b=?,played_at=? WHERE id=?',[(a,b,d,i) for i,a,b,d in before_dates]);db.commit()
+        print('OK: panel date filter, pagination, status/attachment combinations, impossible date and player scope')
         assert filtered_ids(admin,'attachment=with')=={1}
         assert filtered_ids(athlete,'attachment=with')=={1}
         assert 1 not in filtered_ids(admin,'attachment=without')

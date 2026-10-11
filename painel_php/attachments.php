@@ -15,6 +15,7 @@ function panelReturnUrl(): string
         if (in_array($_GET[$key] ?? '', $allowed, true)) $params[$key] = $_GET[$key];
     }
     if (is_string($_GET['q'] ?? null) && trim($_GET['q']) !== '') $params['q'] = trim($_GET['q']);
+    if (is_string($_GET['date'] ?? null) && validGameDate($_GET['date'])) $params['date'] = $_GET['date'];
     return 'admin.php' . ($params ? '?' . http_build_query($params) : '');
 }
 
