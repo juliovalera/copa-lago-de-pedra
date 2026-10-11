@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.65 - 11/10/2026
+
+- Painel preserva filtros e paginação ao salvar resultados, inclusive em erros de validação ou conflitos.
+- Atalho para anexar/consultar a súmula do jogo salvo, mesmo quando ele deixa de corresponder aos filtros.
+
 ## 1.64 - 09/10/2026
 
 - Página pública: o cartão Mais gols marcados passa a se chamar Artilheiro, mantendo a contagem de gols e a indicação de empates.

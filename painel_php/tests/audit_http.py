@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.64' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.65' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.64' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.65' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.64' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.65' in public_html
         for page in (login_html, guide_html, public_html):
             assert page.count('id="copa-credits"') == 1
             assert 'julio@projetos.tec.br' in page and 'data-copa-credits' in page
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.64 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.65 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -84,7 +84,11 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         normal_admin=client();get(normal_admin,'admin.php',{'login':'Gestor','password':'test-only'})
         assert get(normal_admin,'usuarios.php')[0]==403
         admin=client();status,html,_=get(admin,'admin.php',{'login':'','password':'test-only'})
-        status,html,_=get(admin,'admin.php',{'csrf':csrf(html),'reason':'Correcao conferida no teste','result_token':result_token(html),'game_id':1,'score_a':2,'score_b':1,'played_at':'2026-09-20'})
+        filters={'player':1,'opponent':2,'round':1,'status':'pending','attachment':'without','q':'','page':1}
+        status,html,saved_url=get(admin,'admin.php?'+urlencode(filters),{'csrf':csrf(html),'reason':'Correcao conferida no teste','result_token':result_token(html),'game_id':1,'score_a':2,'score_b':1,'played_at':'2026-09-20'})
+        assert all(f'{key}={value}' in saved_url for key,value in filters.items() if value!='')
+        assert 'anexos.php?game=1' in html and 'id="game-1"' not in html
+        assert 'Anexar / consultar' in html
         assert status==200
         status,html,_=get(admin,'usuarios.php')
         status,html,_=get(admin,'usuarios.php',{'csrf':csrf(html),'action':'create','name':'Teste <script>alert(1)</script>','username':'novo','email':'teste@example.invalid','player_id':'','role':'admin'})
@@ -339,7 +343,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         get(admin,'admin.php',{'csrf':csrf(first),'reason':'Correcao conferida no teste','result_token':result_token(first),'game_id':1,'score_a':7,'score_b':4,'played_at':'2026-09-20'})
         counts=db.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0],db.execute('SELECT COUNT(*) FROM email_notifications').fetchone()[0]
         status,conflict,url=get(normal_admin,'admin.php',{'csrf':csrf(second),'reason':'Correcao conferida no teste','result_token':old,'game_id':1,'score_a':9,'score_b':9,'played_at':'2026-09-21'})
-        assert status==200 and 'Sua alteração não foi salva' in conflict and 'round=1' in url
+        assert status==200 and 'Sua alteração não foi salva' in conflict and url.endswith('admin.php')
         assert db.execute('SELECT score_a,score_b FROM games WHERE id=1').fetchone()==(7,4)
         assert counts==(db.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0],db.execute('SELECT COUNT(*) FROM email_notifications').fetchone()[0])
         get(normal_admin,'admin.php',{'csrf':csrf(conflict),'reason':'Correcao conferida no teste','result_token':result_token(conflict),'game_id':1,'score_a':8,'score_b':4,'played_at':'2026-09-20'})
