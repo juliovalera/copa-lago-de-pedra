@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.67 - 11/10/2026
+
+- Jogos na área pública: filtro Data do jogo, com datas válidas de resultados da mais recente para a mais antiga.
+- Resumo por dia e combinação com jogadores, rodada e situação; limpar filtros e consulta pelo perfil restauram Todas as datas. Guia atualizado.
+
 ## 1.66 - 11/10/2026
 
 - Anexos preservam os filtros e a página de origem ao enviar, substituir ou remover arquivos e voltar ao painel.
