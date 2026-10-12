@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.71 - 12/10/2026
+
+- Painel avisa que a data precisa ser preenchida antes de enviar um placar, mantendo os campos digitados.
+- Validação no servidor também preserva placares, justificativa e token de edição quando falta a data; filtros mantidos. Remoção autorizada de resultado continua sem exigir data.
+
 ## 1.70 - 11/10/2026
 
 - Aba Jogos: barra de progresso acessível, porcentagem e contagem de resultados registrados no campeonato inteiro, independente dos filtros.

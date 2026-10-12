@@ -54,3 +54,5 @@
 !/scripts/check_history_browser.py
 
 !/scripts/check_attachments_browser.py
+
+!/scripts/check_date_validation_browser.py
