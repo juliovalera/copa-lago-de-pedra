@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.72 - 22/10/2026
+
+- Perfil público: Quem falta enfrentar? lista adversários com partidas sem resultado, indicando 1º turno e/ou 2º turno (returno).
+- Filtros por turno, contagem de partidas e adversários e aviso sobre placares ainda não informados. Guia atualizado.
+
 ## 1.71 - 12/10/2026
 
 - Painel avisa que a data precisa ser preenchida antes de enviar um placar, mantendo os campos digitados.

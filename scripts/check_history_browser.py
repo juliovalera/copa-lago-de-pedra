@@ -126,6 +126,37 @@ try:
         (ROOT/'previews/progress.png').write_bytes(base64.b64decode(call('Page.captureScreenshot')['data']))
         print('OK: progress 0/100/13.1 percent, empty championship, accessible native progress and unaffected by filters')
 
+        scenario=copy.deepcopy(fixture)
+        scenario['games']=[dict(id=str(i),game=i,round=1,turn=turn,a=a,b=b,status=status,scoreA=0,scoreB=0,playedAt='2026-10-08') for i,(a,b,turn,status) in enumerate([
+            ('Ana <Teste>','Bruno',1,'pending'),('Bruno','Ana <Teste>',2,'pending'),
+            ('Carla','Ana <Teste>',2,'pending'),('Ana <Teste>','Daniel',1,'played'),
+            ('Daniel','Ana <Teste>',2,'played'),('Bruno','Carla',1,'pending')],1)]
+        scenario_html=re.sub(r'<script>window.COPA_DATA=.*?;</script>',lambda m:'<script>window.COPA_DATA='+json.dumps(scenario).replace('<',r'\u003c')+';</script>',html)
+        (ROOT/'previews/pending-test.html').write_text(scenario_html,encoding='utf-8')
+        call('Page.navigate',dict(url=base+'/previews/pending-test.html#classificacao'));time.sleep(.4)
+        js("document.querySelector('[data-player=\"1\"]').click();document.querySelector('#profile-pending').click()")
+        assert js("document.querySelector('#pending-summary').textContent.includes('3 partidas contra 2 advers\u00e1rios')")
+        assert js("document.querySelector('[data-pending-turn=\"1\"]').textContent==='1\u00ba turno'")
+        assert js("document.querySelectorAll('#pending-opponents li').length===2 && document.querySelector('.pending-player').textContent==='Ana <Teste>'")
+        assert js("document.querySelector('#pending-opponents li').textContent.includes('1') && document.querySelector('#pending-opponents li').textContent.includes('returno')")
+        js("document.querySelector('[data-pending-turn=\"1\"]').click()")
+        assert js("document.querySelector('#pending-summary').textContent.includes('1 partida contra 1') && document.querySelectorAll('#pending-opponents li').length===1")
+        js("document.querySelector('[data-pending-turn=\"2\"]').click()")
+        assert js("document.querySelector('#pending-summary').textContent.includes('2 partidas contra 2')")
+        for width in [320,390,768,1280]:
+            call('Emulation.setDeviceMetricsOverride',dict(width=width,height=900,deviceScaleFactor=1,mobile=False))
+            assert js("document.querySelector('#player-dialog').scrollWidth<=document.querySelector('#player-dialog').clientWidth"),width
+        call('Emulation.setDeviceMetricsOverride',dict(width=390,height=900,deviceScaleFactor=1,mobile=False))
+        js("document.querySelector('[data-pending-turn=\"\"]').click()")
+        (ROOT/'previews/pending.png').write_bytes(base64.b64decode(call('Page.captureScreenshot')['data']))
+        js("document.querySelector('#pending-back').click()")
+        assert js("document.activeElement.id==='profile-pending'")
+        js("document.querySelector('#close-dialog').click();document.querySelector('[data-player=\"4\"]').click();document.querySelector('#profile-pending').click()")
+        assert js("document.querySelectorAll('#pending-opponents li').length===0 && document.querySelector('#pending-summary').textContent.startsWith('Todos os seus jogos')")
+        js("document.querySelector('[data-pending-turn=\"1\"]').click()")
+        assert js("document.querySelector('#pending-summary').textContent.includes('Nenhuma partida')")
+        print('OK: pending opponents in both orientations, distinct counts, both turns, filters, zero-zero played exclusion, empty state, escaped names, focus and mobile modal')
+
 finally:
     process.terminate()
     try: process.wait(timeout=3)

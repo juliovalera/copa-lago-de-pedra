@@ -127,10 +127,34 @@
   function renderProfile(p) {
     const issues = data.issues.filter(i => i.player === p.name);
     const fields = [['Pontos',p.points],['Jogos',p.played],['Aproveitamento',formatPercentage(p)],['Vitórias',p.wins],['Empates',p.draws],['Derrotas',p.losses],['Gols marcados',p.goalsFor],['Gols sofridos',p.goalsAgainst],['Saldo de gols',signed(p.goalDifference)]];
-    $('#player-content').innerHTML = `<h2 id="player-title">${escape(p.name)}</h2><p class="player-subtitle">${p.position}º na classificação · ${p.played ? `${p.played} jogos registrados` : 'Ainda sem jogos registrados'}</p><div class="player-stats">${fields.map(([name,value]) => `<div class="player-stat"><strong>${escape(value)}</strong><span>${name}</span></div>`).join('')}</div>${issues.length?`<div class="profile-warning"><strong>Valores a conferir</strong>${issues.map(i => `<p>${escape(i.message)}</p>`).join('')}</div>`:''}<p class="player-subtitle">${p.history.length ? `${p.history.length} posições registradas no histórico.` : 'Ainda não há resultados com data para exibir a evolução.'}</p><div class="dialog-actions"><button class="primary" id="profile-favorite" aria-pressed="${favorites.has(p.id)}">${favorites.has(p.id)?'★ Remover favorito':'☆ Adicionar favorito'}</button><button class="secondary" id="profile-games">Ver jogos</button><button class="secondary" id="profile-history">Ver evolução</button></div>`;
+    $('#player-content').innerHTML = `<h2 id="player-title">${escape(p.name)}</h2><p class="player-subtitle">${p.position}º na classificação · ${p.played ? `${p.played} jogos registrados` : 'Ainda sem jogos registrados'}</p><div class="player-stats">${fields.map(([name,value]) => `<div class="player-stat"><strong>${escape(value)}</strong><span>${name}</span></div>`).join('')}</div>${issues.length?`<div class="profile-warning"><strong>Valores a conferir</strong>${issues.map(i => `<p>${escape(i.message)}</p>`).join('')}</div>`:''}<p class="player-subtitle">${p.history.length ? `${p.history.length} posições registradas no histórico.` : 'Ainda não há resultados com data para exibir a evolução.'}</p><div class="dialog-actions"><button class="primary" id="profile-favorite" aria-pressed="${favorites.has(p.id)}">${favorites.has(p.id)?'★ Remover favorito':'☆ Adicionar favorito'}</button><button class="secondary" id="profile-games">Ver jogos</button><button class="secondary" id="profile-history">Ver evolução</button><button class="secondary" id="profile-pending">Quem falta enfrentar?</button></div>`;
     $('#profile-favorite').addEventListener('click', () => { toggleFavorite(p); $('#profile-favorite').focus(); });
     $('#profile-games').addEventListener('click', () => { $('#game-player').value=p.name; $('#game-opponent').value=''; syncGamePlayers(); $('#game-round').value=''; $('#game-status').value=''; $('#game-date').value=''; gamePage=1; renderGames(); $('#player-dialog').close(); location.hash='jogos'; });
+    $('#profile-pending').addEventListener('click', () => renderPendingOpponents(p));
     $('#profile-history').addEventListener('click', () => { $('#history-player').value = p.id; renderHistory(); $('#player-dialog').close(); location.hash = 'evolucao'; });
+  }
+  function renderPendingOpponents(p) {
+    $('#player-content').innerHTML = `<h2 id="player-title">Quem falta enfrentar?</h2><p class="pending-player">${escape(p.name)}</p><p>Esta lista considera partidas sem resultado registrado. Se você já jogou, confira se o placar foi informado.</p><div class="pending-turns" role="group" aria-label="Filtrar por turno"><button class="secondary" data-pending-turn="" aria-pressed="true">Todos</button><button class="secondary" data-pending-turn="1" aria-pressed="false">1º turno</button><button class="secondary" data-pending-turn="2" aria-pressed="false">2º turno — returno</button></div><p id="pending-summary" role="status" aria-live="polite"></p><ul id="pending-opponents" class="pending-opponents"></ul><button class="secondary" id="pending-back">Voltar ao perfil</button>`;
+    const pending = data.games.filter(g => g.status === 'pending' && (g.a === p.name || g.b === p.name));
+    const render = turn => {
+      const games = pending.filter(g => !turn || String(g.turn) === turn);
+      const opponents = new Map();
+      for (const game of games) {
+        const name = game.a === p.name ? game.b : game.a;
+        if (!opponents.has(name)) opponents.set(name, new Set());
+        opponents.get(name).add(Number(game.turn));
+      }
+      $('#pending-summary').textContent = games.length
+        ? `${games.length === 1 ? 'Falta 1 partida' : `Faltam ${games.length} partidas`} contra ${opponents.size} ${opponents.size === 1 ? 'adversário' : 'adversários'}${turn ? ` no ${turn}º turno` : ''}.`
+        : turn ? 'Nenhuma partida pendente neste turno.' : 'Todos os seus jogos têm resultado registrado!';
+      $('#pending-opponents').innerHTML = [...opponents].sort(([a],[b])=>a.localeCompare(b,'pt-BR')).map(([name, turns]) => `<li><strong>${escape(name)}</strong><span>${[...turns].sort().map(t=>t === 1 ? '1º turno' : '2º turno — returno').join(' e ')}</span></li>`).join('');
+      document.querySelectorAll('[data-pending-turn]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.pendingTurn === turn)));
+    };
+    document.querySelectorAll('[data-pending-turn]').forEach(button=>button.addEventListener('click',()=>render(button.dataset.pendingTurn)));
+    $('#pending-back').addEventListener('click',()=>{renderProfile(p);$('#profile-pending').focus();});
+    render('');
+    $('#player-dialog').scrollTop = 0;
+    $('[data-pending-turn]').focus();
   }
   function openProfile(p) { dialogPlayer=p; renderProfile(p); $('#player-dialog').showModal(); }
   $('#close-dialog').addEventListener('click', () => $('#player-dialog').close());
