@@ -9,11 +9,21 @@
   let promptEvent = null, installed = navigator.standalone === true || standalone.matches;
   const address = document.querySelector('#install-address');
   address.value = new URL('index.php', location.href).href;
+  const dismiss = document.querySelector('#install-dismiss');
+  const preferenceKey = 'copa-install-dismissed:' + new URL(address.value).pathname;
+  let dismissed = false;
+  try { dismissed = localStorage.getItem(preferenceKey) === '1'; } catch { /* Storage may be unavailable. */ }
+  dismiss.hidden = false;
+  dismiss.addEventListener('click', () => {
+    dismissed = true;
+    try { localStorage.setItem(preferenceKey, '1'); } catch { /* Hide for this visit even without storage. */ }
+    refresh();
+  });
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   document.querySelector(isIOS ? '#install-ios' : /Android/i.test(navigator.userAgent) ? '#install-android' : '#install-other').open = true;
   function refresh() {
-    open.hidden = installed;
-    document.querySelector('#install-banner').hidden = installed;
+    open.hidden = installed || dismissed;
+    document.querySelector('#install-banner').hidden = installed || dismissed;
     confirm.hidden = !promptEvent || installed;
     if (installed) status.textContent = 'O acesso pelo ícone está pronto. Procure Copa Lago de Pedra no seu aparelho.';
   }

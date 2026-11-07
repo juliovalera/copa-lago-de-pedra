@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.74 - 07/11/2026
+
+- Convite para instalar: opção Não mostrar novamente, com preferência salva no navegador e aparelho. Sem alteração no banco.
+- Guia atualizado com as orientações para ocultar o convite e instalar pelo menu do navegador.
+
 ## 1.73 - 07/11/2026
 
 - Página pública: Colocar no celular, com instalação mediante confirmação quando oferecida pelo navegador e orientações para Android, iPhone/iPad e outros navegadores.

@@ -90,6 +90,19 @@ try:
         call('Page.reload');time.sleep(1)
         assert js("document.querySelector('#install-banner').hidden")
         call('Page.removeScriptToEvaluateOnNewDocument',dict(identifier=hook))
+        call('Page.reload');time.sleep(1)
+        js("document.querySelector('#install-dismiss').click()")
+        assert js("document.querySelector('#install-banner').hidden")
+        call('Page.reload');time.sleep(1)
+        assert js("document.querySelector('#install-banner').hidden")
+        js("localStorage.clear()")
+        call('Page.reload');time.sleep(1)
+        assert js("!document.querySelector('#install-banner').hidden")
+        hook=call('Page.addScriptToEvaluateOnNewDocument',dict(source="Object.defineProperty(window,'localStorage',{get(){throw Error('blocked')}})"))['identifier']
+        call('Page.reload');time.sleep(1)
+        js("document.querySelector('#install-dismiss').click()")
+        assert js("document.querySelector('#install-banner').hidden")
+        call('Page.removeScriptToEvaluateOnNewDocument',dict(identifier=hook))
         manifest=json.loads((ROOT/'painel_php/public/manifest.webmanifest').read_text(encoding='utf-8'))
         assert manifest['start_url']=='./index.php' and manifest['scope']=='./' and manifest['id']=='./'
         from PIL import Image

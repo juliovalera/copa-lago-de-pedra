@@ -8,6 +8,7 @@ return [
 <img src="copa-icon-192.png" width="64" height="64" alt="">
 <div><strong>A Copa a um toque</strong><p>Coloque o ícone no celular e abra sem procurar o endereço.</p></div>
 <button class="primary" id="install-open" type="button" aria-haspopup="dialog" aria-controls="install-dialog" hidden>Colocar no celular</button>
+<button class="secondary" id="install-dismiss" type="button" hidden>Não mostrar novamente</button>
 <noscript><p>No Android, abra o menu do navegador e procure “Instalar app” ou “Adicionar à tela inicial”. No iPhone, use Compartilhar → Adicionar à Tela de Início.</p></noscript>
 </section>
 <dialog id="install-dialog" aria-labelledby="install-title">
