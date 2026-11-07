@@ -289,3 +289,7 @@ O painel oferece **Anexar súmula** em cada jogo, inclusive com placar já regis
 - Backup novo guarda `.sqlite` e pasta correspondente `.sqlite.files`. **Baixar completo (ZIP)** transmite ambos, sem carregar o conjunto em memória nem exigir ZipArchive. Inclui versões removidas. Limite do ZIP: aproximadamente 4 GB.
 - Para restaurar noutra hospedagem: extrair ambos na pasta de backups configurada e usar a restauração pelo acesso principal. A rotina verifica hashes, recupera arquivos ausentes, preserva metadados atuais e importa ausentes. Não reativa anexos removidos. Falhas de integridade impedem a restauração.
 - Pacotes de atualização incluem somente código. Não substituem config, banco ou arquivos enviados; não exigem tarefa agendada.
+
+## Acesso pelo ícone do celular
+
+A página PHP inclui `manifest.webmanifest` com caminhos relativos ao diretório `public/`, ícones locais de 192/512 pixels e apple-touch-icon de 180 pixels. O botão Colocar no celular usa `beforeinstallprompt` quando disponível e oferece instruções manuais nos demais casos. Requer HTTPS em produção; localhost permite testes. A oferta de instalação depende do navegador e da interação do usuário. Sem service worker, cache offline, tarefas agendadas ou alteração no banco. O ícone abre `index.php` e requer internet.

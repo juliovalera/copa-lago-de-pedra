@@ -56,3 +56,5 @@
 !/scripts/check_attachments_browser.py
 
 !/scripts/check_date_validation_browser.py
+
+!/scripts/check_install_browser.py

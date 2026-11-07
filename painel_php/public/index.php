@@ -27,6 +27,9 @@ $html = preg_replace_callback(
     },
     $html
 );
+$install = require __DIR__ . '/install-ui.php';
+$html = str_replace('</head>', $install['head'].'</head>', $html);
+$html = str_replace('<main id="conteudo">', '<main id="conteudo">'.$install['body'], $html);
 $html = str_replace('Fonte: tabela de jogos da competição', 'Fonte: resultados registrados no sistema da competição.', $html);
 $downloadLink = '<a class="secondary" data-export-open href="baixar.php" aria-haspopup="dialog" aria-controls="export-dialog">↓ Baixar tabela</a>';
 $html = str_replace('<button class="secondary" id="download">↓ Baixar tabela</button>', str_replace('data-export-open', 'id="download" data-export-open', $downloadLink), $html);

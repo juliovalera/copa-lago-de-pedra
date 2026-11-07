@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.73 - 07/11/2026
+
+- Página pública: Colocar no celular, com instalação mediante confirmação quando oferecida pelo navegador e orientações para Android, iPhone/iPad e outros navegadores.
+- Manifesto e ícones da Copa, abertura pela tela inicial e cópia do endereço para sair do navegador interno do WhatsApp.
+- Acesso requer internet; sem cache offline ou armazenamento novo de resultados/dados privados. Guia atualizado.
+
 ## 1.72 - 22/10/2026
 
 - Perfil público: Quem falta enfrentar? lista adversários com partidas sem resultado, indicando 1º turno e/ou 2º turno (returno).
