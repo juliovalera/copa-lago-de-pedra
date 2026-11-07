@@ -28,6 +28,7 @@ $html = preg_replace_callback(
     $html
 );
 $install = require __DIR__ . '/install-ui.php';
+$html = str_replace('<p id="import-date"></p>', '<div class="public-freshness"><p id="import-date"></p><div id="public-refresh" data-endpoint="data.php?format=json"><span id="refresh-status" role="status" aria-live="polite">Conferindo dados…</span><span aria-hidden="true"> · </span><button id="refresh-now" type="button" aria-label="Atualizar resultados agora">↻ Atualizar</button></div></div>', $html);
 $html = str_replace('</head>', $install['head'].'</head>', $html);
 $html = str_replace('<main id="conteudo">', '<main id="conteudo">'.$install['body'], $html);
 $html = str_replace('Fonte: tabela de jogos da competição', 'Fonte: resultados registrados no sistema da competição.', $html);

@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.75 - 07/11/2026
+
+- Consulta pública atualiza resultados a cada 60 segundos enquanto visível e ao voltar ao site, sem recarregar a página.
+- Horário discreto da última consulta e comando Atualizar; filtros, aba e posição preservados.
+- Atualização adiada durante formulários e janelas abertas; falhas de conexão preservam dados anteriores. Resposta sem tabela quando os dados não mudaram.
+
 ## 1.74 - 07/11/2026
 
 - Convite para instalar: opção Não mostrar novamente, com preferência salva no navegador e aparelho. Sem alteração no banco.

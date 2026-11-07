@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const data = window.COPA_DATA;
+  let data = window.COPA_DATA;
   const $ = (selector) => document.querySelector(selector);
   const escape = (value) => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const normalize = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -53,7 +53,8 @@
   let filter = 'all';
   let dialogPlayer = null;
   let toastTimer;
-  const players = data.players;
+  let players = data.players;
+  function renderSummary() {
   const leader = [...players].sort((a,b) => a.position-b.position)[0];
   const scorers = [...players].sort((a,b) => b.goalsFor-a.goalsFor || a.position-b.position);
   const bestScorers = scorers.filter(p => p.goalsFor === scorers[0].goalsFor);
@@ -68,6 +69,8 @@
     ['ARTILHEIRO', bestScorers.length > 1 ? `${bestScorers.length} empatados` : bestScorers[0].name.split(' ')[0], `${scorers[0].goalsFor} gols · placares registrados`, '◎', true],
     ['PONTOS DISTRIBUÍDOS', data.totals.points, '3 por vitória · 1 por empate', '↗', false]
   ].map(([label,value,sub,symbol,name]) => `<article class="stat"><span class="stat-label">${label}</span><span class="stat-symbol" aria-hidden="true">${symbol}</span><strong class="stat-value${name?' name':''}">${escape(value)}</strong><span class="stat-sub">${escape(sub)}</span></article>`).join('');
+  }
+  renderSummary();
 
   function toast(text) {
     $('#toast').textContent = text;
@@ -221,11 +224,14 @@
   }
   let gamePage=1;
   const pageSize=26;
+  function renderProgress() {
   const totalGames = data.games.length;
   const completedGames = data.games.filter(g => g.status === 'played').length;
   const progressPercent = totalGames ? completedGames / totalGames * 100 : 0;
   const progressLabel = progressPercent.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + '%';
   $('#games-summary').innerHTML = `<div class="competition-progress-heading"><label for="competition-progress">Progresso do campeonato</label><strong>${progressLabel}</strong></div><progress id="competition-progress" max="${totalGames || 1}" value="${completedGames}" aria-valuetext="${progressLabel}: ${completedGames} de ${totalGames} jogos com resultado">${progressLabel}</progress><div>${totalGames} jogos previstos · ${completedGames} com resultado · ${totalGames-completedGames} sem resultado</div><p class="competition-progress-note">Baseado nos resultados registrados de todo o campeonato, independentemente dos filtros.</p>`;
+  }
+  renderProgress();
   $('#game-player').insertAdjacentHTML('beforeend', [...players].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${escape(p.name)}">${escape(p.name)}</option>`).join(''));
   $('#game-opponent').insertAdjacentHTML('beforeend', [...$('#game-player').options].slice(1).map(o=>o.outerHTML).join(''));
   function syncGamePlayers() {
@@ -313,4 +319,68 @@
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='copa-lago-de-pedra.csv'; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000); toast('Tabela exportada com os filtros atuais e os critérios de cálculo.');
   });
   renderRanking(); renderHistory(); route();
+  const refreshControl = $('#public-refresh');
+  if (refreshControl) {
+    let busy = false, revision = '', lastCheck = '';
+    const status = $('#refresh-status'), button = $('#refresh-now');
+    const protectedView = () => document.hidden || !!$('dialog[open]') ||
+      !!document.activeElement?.matches('input, select, textarea, #ranking-body button, #games-list button') ||
+      !!$('#games-list [aria-expanded="true"]');
+    function replaceOptions(select, options, selected) {
+      select.innerHTML = options;
+      if ([...select.options].some(o => o.value === selected)) select.value = selected;
+    }
+    function applyFreshData(next) {
+      const x = scrollX, y = scrollY;
+      const oldPlayers = players;
+      data = next; players = next.players; window.COPA_DATA = next;
+      const names = [...players].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+      const options = names.map(p=>`<option value="${escape(p.name)}">${escape(p.name)}</option>`).join('');
+      for (const id of ['#game-player','#game-opponent']) {
+        const select = $(id), old = oldPlayers.find(p=>p.name===select.value);
+        const selected = old ? players.find(p=>p.id===old.id)?.name || select.value : select.value;
+        replaceOptions(select, select.options[0].outerHTML + options, selected);
+      }
+      const historyOptions = names.map(p=>`<option value="${escape(p.id)}">${escape(p.name)}</option>`).join('');
+      replaceOptions($('#history-player'), historyOptions, $('#history-player').value);
+      comparisonSelects.forEach(select=>replaceOptions(select, select.options[0].outerHTML+historyOptions, select.value));
+      const dates = [...new Set(data.games.filter(validPlayedDate).map(g=>g.playedAt))].sort().reverse();
+      const dateSelect = $('#game-date'), selectedDate = dateSelect.value;
+      if (selectedDate && !dates.includes(selectedDate)) dates.push(selectedDate);
+      replaceOptions(dateSelect, dateSelect.options[0].outerHTML + dates.map(date=>`<option value="${date}">${date.split('-').reverse().join('/')}</option>`).join(''), selectedDate);
+      syncGamePlayers(); renderSummary(); renderProgress(); renderRanking(); renderGames(); renderHistory();
+      window.scrollTo({left:x, top:y, behavior:'instant'});
+    }
+    async function checkUpdates() {
+      if (busy || protectedView()) return;
+      busy = true; button.disabled = true;
+      const controller = new AbortController();
+      const timeout = setTimeout(()=>controller.abort(), 15000);
+      try {
+        const url = new URL(refreshControl.dataset.endpoint, location.href);
+        if (revision) url.searchParams.set('revision', revision);
+        const response = await fetch(url, {cache:'no-store', credentials:'omit', signal:controller.signal});
+        if (!response.ok) throw new Error('HTTP');
+        const result = await response.json();
+        if (typeof result.revision !== 'string' || !('data' in result)) throw new Error('Invalid response');
+        // A dialog or form may have opened while the request was in flight.
+        if (protectedView()) return;
+        if (result.data !== null) {
+          if (!Array.isArray(result.data.players) || !result.data.players.length || !Array.isArray(result.data.games)) throw new Error('Invalid data');
+          applyFreshData(result.data);
+        }
+        revision = result.revision;
+        lastCheck = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+        status.textContent = 'Atualizado às ' + lastCheck;
+        status.title = 'Horário da última consulta bem-sucedida, mesmo quando não há novos resultados.';
+      } catch {
+        status.textContent = (lastCheck ? 'Última consulta às '+lastCheck+'. ' : '') + 'Sem atualização no momento.';
+      } finally { clearTimeout(timeout); busy = false; button.disabled = false; }
+    }
+    button.addEventListener('click', checkUpdates);
+    setInterval(checkUpdates, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdates(); });
+    window.addEventListener('online', checkUpdates);
+    checkUpdates();
+  }
 })();

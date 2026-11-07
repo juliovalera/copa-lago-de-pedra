@@ -295,3 +295,7 @@ O painel oferece **Anexar súmula** em cada jogo, inclusive com placar já regis
 A página PHP inclui `manifest.webmanifest` com caminhos relativos ao diretório `public/`, ícones locais de 192/512 pixels e apple-touch-icon de 180 pixels. O botão Colocar no celular usa `beforeinstallprompt` quando disponível e oferece instruções manuais nos demais casos. Requer HTTPS em produção; localhost permite testes. A oferta de instalação depende do navegador e da interação do usuário. Sem service worker, cache offline, tarefas agendadas ou alteração no banco. O ícone abre `index.php` e requer internet.
 
 O convite oferece **Não mostrar novamente**, salvo em `localStorage` por caminho da aplicação. A preferência vale no navegador/aparelho atual e pode desaparecer ao limpar os dados do site. Se o armazenamento estiver bloqueado, o convite fica oculto apenas durante a visita.
+
+### Atualização da consulta pública
+
+A página PHP consulta `data.php?format=json` a cada 60 segundos enquanto visível e ao retornar. Usa `no-store`, timeout de 15 segundos e uma requisição por vez. O hash dos dados públicos evita retransmitir a tabela sem mudanças (o servidor ainda calcula os dados para compará-los). Formulários em uso e diálogos abertos adiam a consulta. O painel administrativo não recebe esse temporizador. Nenhuma alteração no banco.
