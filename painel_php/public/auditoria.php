@@ -64,7 +64,7 @@ function recipientDetails(array $notices): string
     if (!$notices) return '<p><small>Nenhum destinatário de aviso registrado para esta ação.</small></p>';
     $html = '<details><summary>Ver destinatários dos avisos</summary><p>Aceito pelo servidor não confirma entrega na caixa de entrada.</p><ul>';
     $statuses = ['pending'=>'Aguardando envio', 'sending'=>'Envio sem confirmação', 'sent'=>'Aceito pelo servidor de e-mail', 'failed'=>'Falha no envio'];
-    $audiences = ['player'=>'Partida do botonista', 'organizer'=>'Organização', 'account'=>'Cadastro da conta'];
+    $audiences = ['withdrawal'=>'Desistências — aviso consolidado','player'=>'Partida do botonista', 'organizer'=>'Organização', 'account'=>'Cadastro da conta'];
     foreach ($notices as $notice) {
         $html .= '<li><strong class="notification-recipient">' . h($notice['recipient']) . '</strong> — ' . h($statuses[$notice['status']] ?? 'Sem confirmação') . '<br><small>' . h($audiences[$notice['audience']] ?? 'Aviso') . ' · Tentativas: ' . (int) $notice['attempts'] . '</small></li>';
     }

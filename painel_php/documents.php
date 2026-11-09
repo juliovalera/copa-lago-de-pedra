@@ -19,6 +19,11 @@ function competitionReport(array $data, DateTimeImmutable $generated, string $co
         }
         $sections[]=['title'=>'Jogos e resultados','note'=>'Gols em branco: sem resultado registrado. Data em branco: não informada. 0 × 0 é um empate registrado.','headers'=>['Rod.','Jogo','Etapa','Jogador A','Gols A','Gols B','Jogador B','Data','Situação'],'widths'=>[5,5,8,23,5,5,23,11,15],'left'=>[3,6],'rows'=>$rows];
     }
+    if (!empty($data['withdrawnPlayers'])) {
+        $names=implode(', ',array_column($data['withdrawnPlayers'],'name'));
+        foreach ($sections as &$section) $section['note'].=' Desistentes fora dos cálculos: '.$names.'. '.($data['excludedCount']??count($data['excludedGames'])).' jogos anulados/cancelados, sem pontos ou gols.';
+        unset($section);
+    }
     $logos=[];
     foreach (['lago_de_pedra_256.png','liga_mogiana_256.png'] as $name) {
         $bytes=file_get_contents(dirname(__DIR__).'/site/'.$name);

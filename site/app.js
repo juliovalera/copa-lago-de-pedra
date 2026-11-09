@@ -55,9 +55,15 @@
   let toastTimer;
   let players = data.players;
   function renderSummary() {
-  const leader = [...players].sort((a,b) => a.position-b.position)[0];
+  let withdrawalNote = $('#withdrawal-note');
+  if (!withdrawalNote) { withdrawalNote=document.createElement('div');withdrawalNote.id='withdrawal-note';$('#summary').after(withdrawalNote); }
+  const withdrawn=data.withdrawnPlayers || [], excluded=data.excludedGames || [];
+  withdrawalNote.hidden=!withdrawn.length;
+  withdrawalNote.innerHTML=withdrawn.length ? `<details><summary>Desistências: ${withdrawn.map(p=>escape(p.name)).join(', ')} · ${excluded.length} jogos fora dos cálculos</summary><p>Os desistentes estão fora da classificação. Seus confrontos não contam nos pontos, gols, artilharia, evolução ou progresso. Resultados originais preservados abaixo.</p><ul>${excluded.map(g=>`<li>Rodada ${g.round} · ${g.turn===1?'Turno':'Returno'} · ${escape(g.a)} × ${escape(g.b)}: <strong>${g.status==='annulled'?'Anulado':'Cancelado'} por desistência</strong>${g.status==='annulled'?` — original ${g.scoreA} × ${g.scoreB}, ${escape(g.playedAt || 'sem data')}`:''}</li>`).join('')}</ul></details>` : '';
+
+  const leader = [...players].sort((a,b) => a.position-b.position)[0] || {name:'Sem participantes ativos',points:0};
   const scorers = [...players].sort((a,b) => b.goalsFor-a.goalsFor || a.position-b.position);
-  const bestScorers = scorers.filter(p => p.goalsFor === scorers[0].goalsFor);
+  const bestScorers = scorers.filter(p => p.goalsFor === (scorers[0]?.goalsFor || 0));
   $('#competition-players').textContent = players.length;
   $('#competition-games').textContent = data.games.length;
   $('#import-date').textContent = data.source === 'SQLite'
@@ -66,7 +72,7 @@
   $('#summary').innerHTML = [
     ['PARTICIPANTES', players.length, `${players.filter(p => p.played > 0).length} já entraram em jogo`, '◉', false],
     ['NA LIDERANÇA', leader.name, `${leader.points} pontos · classificação recalculada`, '⚑', true],
-    ['ARTILHEIRO', bestScorers.length > 1 ? `${bestScorers.length} empatados` : bestScorers[0].name.split(' ')[0], `${scorers[0].goalsFor} gols · placares registrados`, '◎', true],
+    ['ARTILHEIRO', bestScorers.length > 1 ? `${bestScorers.length} empatados` : (bestScorers[0]?.name.split(' ')[0] || '—'), `${(scorers[0]?.goalsFor || 0)} gols · placares registrados`, '◎', true],
     ['PONTOS DISTRIBUÍDOS', data.totals.points, '3 por vitória · 1 por empate', '↗', false]
   ].map(([label,value,sub,symbol,name]) => `<article class="stat"><span class="stat-label">${label}</span><span class="stat-symbol" aria-hidden="true">${symbol}</span><strong class="stat-value${name?' name':''}">${escape(value)}</strong><span class="stat-sub">${escape(sub)}</span></article>`).join('');
   }
@@ -171,6 +177,7 @@
     syncHistoryPlayers();
     if ($('#history-compare').checked && comparisonSelects.some(s => s.value)) { renderComparison(); return; }
     const p = players.find(p => p.id === $('#history-player').value);
+    if (!p) { $('#history-content').innerHTML='<p>Nenhum participante ativo para mostrar.</p>'; return; }
     const history = [...p.history].sort((a,b) => (a.date || '').localeCompare(b.date || ''));
     const dateLabel = date => date ? date.split('-').reverse().join('/') : '';
     const warning = data.historyUndatedGames ? `<p role="note">Histórico parcial: ${data.historyUndatedGames} jogo(s) com resultado estão sem data válida e não entram neste gráfico. Eles continuam contando na classificação atual.</p>` : '';
@@ -325,7 +332,7 @@
     const status = $('#refresh-status'), button = $('#refresh-now');
     const protectedView = () => document.hidden || !!$('dialog[open]') ||
       !!document.activeElement?.matches('input, select, textarea, #ranking-body button, #games-list button') ||
-      !!$('#games-list [aria-expanded="true"]');
+      !!$('#games-list [aria-expanded="true"]') || !!$('#withdrawal-note details[open]');
     function replaceOptions(select, options, selected) {
       select.innerHTML = options;
       if ([...select.options].some(o => o.value === selected)) select.value = selected;
@@ -366,7 +373,7 @@
         // A dialog or form may have opened while the request was in flight.
         if (protectedView()) return;
         if (result.data !== null) {
-          if (!Array.isArray(result.data.players) || !result.data.players.length || !Array.isArray(result.data.games)) throw new Error('Invalid data');
+          if (!Array.isArray(result.data.players) || !Array.isArray(result.data.games)) throw new Error('Invalid data');
           applyFreshData(result.data);
         }
         revision = result.revision;

@@ -23,10 +23,13 @@ function digitalSheet(int $game, string $date): ?array
 
 function digitalContext(int $gameId, string $date, string $token): array
 {
+    $currentGame=gameById($gameId);
+
     $q=db()->prepare('SELECT * FROM referee_links WHERE game_id=? AND generated_on=?');
     $q->execute([$gameId,$date]); $link=$q->fetch();
     $user=currentUser();
     $authorized=isMasterAdmin() || ($user && gameIsAccessible($gameId,userGameRestriction($user)));
+    if ($currentGame && gameExcluded($currentGame) && (!$authorized || (digitalSheet($gameId,$date)['status']??'')!=='final')) requireActiveGame($currentGame);
     if (!$link || (!$authorized && ($date!==date('Y-m-d') || $token==='' || !hash_equals($link['token'],$token) || $link['used_at']!==null))) {
         throw new RuntimeException('Acesso indisponível. Entre com uma conta autorizada ou use o QR na data do jogo.');
     }
@@ -68,6 +71,7 @@ function saveDigitalSheet(int $gameId, string $date, string $token, int $revisio
     return auditedTransaction(static function () use ($gameId,$date,$token,$revision,$expectedGame,$input,$final): array {
         $link=digitalContext($gameId,$date,$token);
         $game=gameById($gameId); $sheet=digitalSheet($gameId,$date);
+        if ($game) requireActiveGame($game);
         if (!$game || $link['used_at']!==null || $game['score_a']!==null || $game['score_b']!==null || ($sheet['status']??'')==='final') throw new ResultConflict('O jogo já foi registrado ou a súmula já foi finalizada. Procure a organização para corrigir o resultado.');
         if (!hash_equals(panelResultToken($game),$expectedGame) || (int)($sheet['revision']??0)!==$revision) throw new ResultConflict('O jogo ou o rascunho mudou em outro acesso. Reabra a súmula e confira os dados antes de continuar.');
         if ($date<date('Y-m-d') || ($final && $date!==date('Y-m-d'))) throw new InvalidArgumentException('A finalização só é permitida na data do jogo. O rascunho pode ser preparado antes.');

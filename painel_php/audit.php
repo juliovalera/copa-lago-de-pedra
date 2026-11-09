@@ -66,6 +66,7 @@ function savePanelResult(int $id, ?int $a, ?int $b, string $date, string $expect
     auditedTransaction(static function () use ($id, $a, $b, $date, $expected, $reason): void {
         $before = gameById($id);
         if (!$before) throw new RuntimeException('Jogo não encontrado.');
+        requireActiveGame($before);
         $admin = hasFullAccess();
         $user = currentUser();
         if (!$admin && (!$user || !$user['player_id'] || !gameIsAccessible($id, (int) $user['player_id']))) {
@@ -191,6 +192,8 @@ function restoreAuditedBackup(string $source, string $safety): void
             if (in_array('match_confirmations',$tables,true)) $pdo->exec('INSERT OR IGNORE INTO main.match_confirmations SELECT * FROM restoration.match_confirmations');
             // Restoring must not reactivate signed grants from an older game state.
             $pdo->exec("UPDATE main.match_confirmations SET status='cancelled' WHERE status='pending'");
+            if (in_array('withdrawal_operations',$tables,true)) $pdo->exec('INSERT OR IGNORE INTO main.withdrawal_operations SELECT * FROM restoration.withdrawal_operations');
+            $pdo->exec('DELETE FROM main.withdrawn_players');
             foreach (['user_invites','referee_links','users','games','players'] as $table) $pdo->exec('DELETE FROM main.' . $table);
             foreach (['players','games','users','referee_links','user_invites'] as $table) {
                 if (!in_array($table, $tables, true)) continue;
@@ -203,6 +206,7 @@ function restoreAuditedBackup(string $source, string $safety): void
                     $pdo->exec("UPDATE main.users SET role = CASE WHEN player_id IS NULL THEN 'admin' ELSE 'player' END");
                 }
             }
+            if (in_array('withdrawn_players',$tables,true)) $pdo->exec('INSERT INTO main.withdrawn_players SELECT * FROM restoration.withdrawn_players');
             if (in_array('digital_sheets', $tables, true)) {
                 $pdo->exec("INSERT INTO main.digital_sheets(game_id,match_date,revision,status,data_json,signatures_json,updated_by,updated_at,finalized_at)
                     SELECT game_id,match_date,revision,status,data_json,signatures_json,updated_by,updated_at,finalized_at FROM restoration.digital_sheets AS source

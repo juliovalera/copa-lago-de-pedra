@@ -109,7 +109,7 @@ function sendPlayerNotification(string $id): void
             $query = db()->prepare('SELECT a.*, n.recipient, n.audience FROM audit_log a JOIN email_notifications n ON n.event_id=a.event_id WHERE a.event_id=? AND n.recipient=?');
             $query->execute([$id, $recipient]); $event = $query->fetch();
             if (!function_exists('smtpSend')) require_once __DIR__ . '/mailer.php';
-            smtpSend($recipient, '[Copa Lago de Pedra] ' . $event['action'], match ($event['audience']) { 'account' => accountNotificationText($event), 'player' => matchNotificationText($event), default => notificationText($event) });
+            smtpSend($recipient, '[Copa Lago de Pedra] ' . $event['action'], match ($event['audience']) { 'withdrawal' => withdrawalNotificationText($event), 'account' => accountNotificationText($event), 'player' => matchNotificationText($event), default => notificationText($event) });
             db()->prepare("UPDATE email_notifications SET status='sent', sent_at=? WHERE event_id=? AND recipient=?")->execute([gmdate('c'), $id, $recipient]);
         } catch (Throwable $exception) {
             try { db()->prepare("UPDATE email_notifications SET status='failed' WHERE event_id=? AND recipient=? AND status='sending'")->execute([$id, $recipient]); }
@@ -162,4 +162,9 @@ function accountNotificationText(array $event): string
     $text.="\nData e hora: " . date('d/m/Y H:i:s',strtotime($event['occurred_at'])) . ' (' . config()['timezone'] . ").\n";
     $text.="Se você não reconhece esta alteração, entre em contato com a organização da copa.\n";
     return $text . "\nAcesse o sistema: " . rtrim((string)(config()['base_url'] ?? ''),'/') . '/admin.php';
+}
+
+function withdrawalNotificationText(array $event): string
+{
+    return "Copa Lago de Pedra\n\n" . $event['action'] . ". A administração aplicou a regra de anular os jogos contra desistentes, no turno e returno. Na restauração, voltam a contar somente jogos sem outros desistentes.\n\nA classificação, os gols e a evolução foram recalculados. Os registros originais foram preservados. Confira seus números no site e procure a administração se tiver dúvidas.\n\n" . (config()['base_url'] ?? '') . "\nReferência: " . $event['target'];
 }

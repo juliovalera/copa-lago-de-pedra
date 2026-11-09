@@ -58,3 +58,5 @@
 !/scripts/check_date_validation_browser.py
 
 !/scripts/check_install_browser.py
+
+!/scripts/check_withdrawals_browser.py

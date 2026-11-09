@@ -299,3 +299,11 @@ O convite oferece **Não mostrar novamente**, salvo em `localStorage` por caminh
 ### Atualização da consulta pública
 
 A página PHP consulta `data.php?format=json` a cada 60 segundos enquanto visível e ao retornar. Usa `no-store`, timeout de 15 segundos e uma requisição por vez. O hash dos dados públicos evita retransmitir a tabela sem mudanças (o servidor ainda calcula os dados para compará-los). Formulários em uso e diálogos abertos adiam a consulta. O painel administrativo não recebe esse temporizador. Nenhuma alteração no banco.
+
+### Desistências e comparação de impactos
+
+No painel administrativo, **Desistências** permite selecionar participantes e revisar uma prévia antes da confirmação. A regra aprovada exclui todos os confrontos dos desistentes no turno e returno, sem W.O. Os placares originais não são substituídos: `withdrawn_players` controla a exclusão, e `withdrawal_operations` guarda snapshots imutáveis da classificação e dos jogos afetados. Os arquivos de súmulas permanecem no lugar.
+
+Cada operação tem backup JSON privado e relatório PDF com logos, antes/depois/diferenças, jogos e justificativa. A restauração administrativa remove apenas a desistência selecionada e recalcula com as demais vigentes. Não importa arquivos JSON enviados pelo usuário nem sobrescreve jogos posteriores. Prévias expiram em 30 minutos e são rejeitadas se os dados mudarem. Escritas nos resultados excluídos são bloqueadas no servidor e no SQLite. Operação, backup e auditoria são atômicos; avisos consolidados são enviados depois do commit. Não há tarefa agendada.
+
+Atualizar o código cria apenas a estrutura; nenhuma desistência é aplicada automaticamente. Testes adicionais: `php -c painel_php/php.ini painel_php/tests/withdrawals.php` (banco temporário e e-mails simulados).

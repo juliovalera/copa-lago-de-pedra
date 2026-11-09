@@ -30,7 +30,7 @@ function confirmationGet(string $id): array
 function confirmationCurrent(array $row): bool
 {
     $game=gameById((int)$row['game_id']);
-    return $game && hash_equals($row['result_token'],panelResultToken($game));
+    return $game && !gameExcluded($game) && hash_equals($row['result_token'],panelResultToken($game));
 }
 
 function confirmationStatus(array $row): string
@@ -50,6 +50,7 @@ function confirmationCreate(int $gameId, int $days): array
     if ($days<1 || $days>30) throw new InvalidArgumentException('Escolha uma validade entre 1 e 30 dias.');
     return auditedTransaction(static function () use ($gameId,$days,$creator): array {
         $game=gameById($gameId);
+        if ($game) requireActiveGame($game);
         if (!$game || $game['score_a']===null || $game['score_b']===null || !validGameDate((string)$game['played_at']) || $game['played_at']>date('Y-m-d')) throw new InvalidArgumentException('Escolha um jogo com resultado e data já ocorrida.');
         $q=db()->prepare("SELECT * FROM match_confirmations WHERE game_id=? AND status IN ('pending','final')"); $q->execute([$gameId]);
         foreach ($q as $row) {

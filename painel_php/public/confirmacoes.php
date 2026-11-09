@@ -36,7 +36,7 @@ if (!$row) {
     foreach ([$p,$o] as $v) if ($v) { $where[]='(g.player_a_id=? OR g.player_b_id=?)'; $args[]=$v; $args[]=$v; }
     if ($p && $p===$o) $where[]='0=1';
     if ($date!=='') { $where[]='g.played_at=?'; $args[]=$date; }
-    $clause=implode(' AND ',$where); $q=db()->prepare('SELECT COUNT(*) FROM games g WHERE '.$clause); $q->execute($args); $total=(int)$q->fetchColumn();
+    $where[]="NOT EXISTS(SELECT 1 FROM withdrawn_players w WHERE w.player_id IN(g.player_a_id,g.player_b_id))"; $clause=implode(' AND ',$where); $q=db()->prepare('SELECT COUNT(*) FROM games g WHERE '.$clause); $q->execute($args); $total=(int)$q->fetchColumn();
     $page=min($page,max(1,(int)ceil($total/20)));
     $q=db()->prepare('SELECT g.*,a.name AS a,b.name AS b FROM games g JOIN players a ON a.id=g.player_a_id JOIN players b ON b.id=g.player_b_id WHERE '.$clause.' ORDER BY g.played_at DESC,g.id LIMIT 20 OFFSET '.(($page-1)*20)); $q->execute($args); $games=$q->fetchAll();
 }

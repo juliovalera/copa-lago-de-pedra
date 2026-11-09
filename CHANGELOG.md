@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 1.76 - 09/11/2026
+
+- Gestão administrativa de desistências, em lote ou futuras, com prévia obrigatória e justificativa.
+- Anula jogos realizados e cancela pendentes no turno/returno, sem apagar placares, datas ou anexos. Retira desistentes e seus confrontos da classificação, artilharia, evolução, progresso e exportações.
+- Backup específico em JSON, relatório histórico de antes/depois em PDF com logos, auditoria e aviso consolidado por destinatário.
+- Restauração por operação respeita outras desistências; bloqueios contra repetição, prévias antigas e alteração de resultados excluídos.
+
 ## 1.75 - 07/11/2026
 
 - Consulta pública atualiza resultados a cada 60 segundos enquanto visível e ao voltar ao site, sem recarregar a página.

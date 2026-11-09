@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
     shutil.copytree(ROOT/'site', root/'site')
     app = root/'painel_php'
     (app/'public').mkdir(parents=True)
-    for name in ('attachments.php','confirmations.php','complaints.php', 'documents.php', 'export_ui.php', 'spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
+    for name in ('withdrawals.php','attachments.php','confirmations.php','complaints.php', 'documents.php', 'export_ui.php', 'spreadsheet.php', 'digital_sheet.php', 'db.php', 'audit.php', 'version.php', 'notifications.php', 'login_security.php'):
         shutil.copyfile(ROOT/'painel_php'/name, app/name)
     for path in (ROOT/'painel_php/public').glob('*'):
         if path.is_file(): shutil.copyfile(path, app/'public'/path.name)
@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.75' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.76' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.75' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.76' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.75' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.76' in public_html
         assert 'id="public-refresh"' in public_html and 'id="public-refresh"' not in login_html
         with guest.open(base+'data.php?format=json') as response:
             assert 'no-store' in response.headers['Cache-Control']
@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.75 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.76 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -872,6 +872,44 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert db.execute('SELECT bytes FROM complaint_files WHERE id=?',(fid,)).fetchone()[0]==b'%PDF-1.4 fixture'
         assert db.execute('SELECT COUNT(*) FROM complaint_mail WHERE complaint_id=?',(cid,)).fetchone()[0]>0
         print('OK: canal reservado, confirmacao POST, privacidade, defesa, prazo, anexos, SMTP/reenvio, revogacao, limites e backup; nenhum placar alterado')
+        # Withdrawal UI and private reports use only this isolated database.
+        assert 'Desist' in get(admin,'desistencias.php')[1]
+        assert get(athlete,'desistencias.php')[0]==403
+        form=get(admin,'desistencias.php')[1]
+        assert get(admin,'desistencias.php',{'csrf':'bad','action':'preview','players[]':'2','reason':'Fictional decision'})[0]==400
+        _,preview,_=get(admin,'desistencias.php',{'csrf':csrf(form),'action':'preview','players[]':'2','reason':'Fictional decision'})
+        assert 'Confirmar decis' in preview and 'name="nonce"' in preview
+        assert db.execute('SELECT COUNT(*) FROM withdrawn_players').fetchone()[0]==0
+        nonce=re.search(r'name="nonce" value="([^"]+)"',preview).group(1)
+        old=get(guest,'data.php?format=json')[1]
+        _,report,url=get(admin,'desistencias.php',{'csrf':csrf(form),'action':'confirm','nonce':nonce})
+        opid=url.split('id=')[-1]
+        assert re.fullmatch('[a-f0-9]{32}',opid),report[-3000:]
+        assert db.execute('SELECT player_id FROM withdrawn_players').fetchone()[0]==2
+        assert 'backup' in report.lower()
+        payload=json.loads(get(admin,'desistencias.php?id='+opid+'&format=pdf')[1])
+        assert len(payload['logos'])==2 and payload['sections'][0]['headers'][0]=='Botonista'
+        assert get(athlete,'desistencias.php?id='+opid+'&format=pdf')[0]==403
+        assert get(athlete,'desistencias.php?id='+opid+'&format=backup')[0]==403
+        backup=json.loads(get(admin,'desistencias.php?id='+opid+'&format=backup')[1])
+        assert backup['snapshot_sha256']==hashlib.sha256(backup['operation']['snapshot'].encode()).hexdigest()
+        assert json.loads(backup['operation']['snapshot'])['before']['games']==[]
+        fresh=json.loads(get(guest,'data.php?format=json')[1])
+        assert fresh['revision']!=json.loads(old)['revision'] and len(fresh['data']['games'])==0
+        assert len(fresh['data']['excludedGames'])==650
+        assert 'class="game-form"' not in get(admin,'admin.php?status=excluded')[1]
+        assert 'class="game-form"' not in get(admin,'admin.php?status=pending')[1]
+        _,again,_=get(admin,'desistencias.php',{'csrf':csrf(form),'action':'confirm','nonce':nonce})
+        assert db.execute('SELECT COUNT(*) FROM withdrawal_operations').fetchone()[0]==1
+        (ROOT/'previews/withdrawal-report.json').write_text(json.dumps(payload),encoding='utf-8')
+        (ROOT/'previews/withdrawal-preview.html').write_text(report.replace('href="admin.css"','href="../painel_php/public/admin.css"').replace('href="withdrawals.css"','href="../painel_php/public/withdrawals.css"'),encoding='utf-8')
+        _,restore,_=get(admin,'desistencias.php',{'csrf':csrf(form),'action':'preview','restore':opid,'reason':'Fictional restoration'})
+        nonce=re.search(r'name="nonce" value="([^"]+)"',restore).group(1)
+        get(admin,'desistencias.php',{'csrf':csrf(form),'action':'confirm','nonce':nonce})
+        assert db.execute('SELECT COUNT(*) FROM withdrawn_players').fetchone()[0]==0
+        assert json.loads(get(admin,'desistencias.php?id='+opid+'&format=pdf')[1])==payload
+        assert len(json.loads(get(guest,'data.php?format=json')[1])['data']['games'])==650
+        print('OK: withdrawal preview/confirm, admin-only, CSRF, replay prevention, private PDF/backup, original snapshot, public cache revision, excluded games and restoration with immutable report')
         db.close()
     finally:
         if 'db' in locals(): db.close()

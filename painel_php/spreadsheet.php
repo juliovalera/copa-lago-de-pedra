@@ -47,6 +47,7 @@ function spreadsheetZip(array $files): string
 function competitionSpreadsheet(array $data, DateTimeImmutable $generated, string $content='all'): string
 {
     $stamp='Gerado em '.$generated->format('d/m/Y H:i:s').' ('.$generated->getTimezone()->getName().') — competição completa; cópia do momento do download.';
+    if (!empty($data['withdrawnPlayers'])) $stamp.=' Desistentes fora dos cálculos: '.implode(', ',array_column($data['withdrawnPlayers'],'name')).'. Jogos anulados/cancelados: '.count($data['excludedGames']).'.';
     $ranking=[];
     foreach ($data['players'] as $p) $ranking[]=[[$p['position'],4],[$p['name']],[$p['points'],4],[$p['played'],4],[$p['wins'],4],[$p['draws'],4],[$p['losses'],4],[$p['goalsFor'],4],[$p['goalsAgainst'],4],[$p['goalDifference'],4],[$p['played']?$p['points']/(3*$p['played']):null,6]];
     $games=[];$epoch=new DateTimeImmutable('1899-12-30',new DateTimeZone('UTC'));

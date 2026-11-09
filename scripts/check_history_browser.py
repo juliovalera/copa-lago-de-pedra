@@ -181,6 +181,10 @@ try:
         time.sleep(.1)
         assert js("document.querySelector('#refresh-status').textContent.includes('Sem atualiza') && COPA_DATA.players[1].points===99 && !document.querySelector('#refresh-now').disabled")
         print('OK: refresh updates data, preserves filters/page/hash/scroll, unchanged data, form/dialog/hidden pause, resume and offline preservation')
+        js("window.retired=structuredClone(COPA_DATA);retired.withdrawnPlayers=retired.players.map(p=>({id:p.id,name:p.name}));retired.excludedGames=retired.games.map(g=>({...g,status:g.status==='played'?'annulled':'cancelled'}));retired.players=[];retired.games=[];retired.totals.points=0;window.fetch=async()=>({ok:true,json:async()=>({revision:'all-withdrawn',data:retired})});document.querySelector('#refresh-now').click()")
+        time.sleep(.2)
+        assert js("!document.querySelector('#withdrawal-note').hidden && document.querySelector('#competition-progress').value===0 && document.querySelectorAll('#ranking-body tr').length===0 && document.querySelector('#history-content').textContent.includes('Nenhum participante')")
+        print('OK: withdrawn names, excluded original games, empty active ranking/history and progress after live refresh')
         js("document.querySelector('.section-intro').scrollIntoView();document.querySelector('#refresh-status').textContent='Atualizado 14:32'")
         (ROOT/'previews/public-refresh-mobile.png').write_bytes(base64.b64decode(call('Page.captureScreenshot')['data']))
 

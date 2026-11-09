@@ -6,6 +6,7 @@ require_once __DIR__ . '/digital_sheet.php';
 require_once __DIR__ . '/version.php';
 require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/login_security.php';
+require_once __DIR__ . '/withdrawals.php';
 
 function config(): array
 {
@@ -89,6 +90,7 @@ function initialiseDatabase(): void
         used_at TEXT NULL,
         created_at TEXT NOT NULL
     )');
+    initialiseWithdrawals();
     initialiseUserRoles();
     $gameColumns = array_column($pdo->query('PRAGMA table_info(games)')->fetchAll(), 'name');
     if (!in_array('result_revision', $gameColumns, true)) {
@@ -204,6 +206,7 @@ function dailyRefereeLink(int $gameId, ?string $matchDate = null): array
         throw new InvalidArgumentException('Informe uma data válida, de hoje em diante.');
     }
     $game = gameById($gameId);
+    if ($game) requireActiveGame($game);
     if (!$game || $game['score_a'] !== null || $game['score_b'] !== null) {
         throw new RuntimeException('Súmula disponível somente para jogos sem resultado.');
     }
@@ -237,7 +240,7 @@ function validRefereeLink(string $token): ?array
         JOIN games g ON g.id = r.game_id
         JOIN players a ON a.id = g.player_a_id
         JOIN players b ON b.id = g.player_b_id
-        WHERE r.token = ? AND r.generated_on = ?');
+        WHERE r.token = ? AND r.generated_on = ? AND NOT EXISTS (SELECT 1 FROM withdrawn_players w WHERE w.player_id IN (g.player_a_id,g.player_b_id))');
     $statement->execute([$token, date('Y-m-d')]);
     return $statement->fetch() ?: null;
 }
@@ -275,11 +278,16 @@ function saveRefereeResult(string $token, int $scoreA, int $scoreB): void
     }
 }
 
-function publicData(): array
+function publicData(?array $withdrawn = null): array
 {
-    $games = gameRows();
+    $withdrawn ??= withdrawnIds();
+    $allGames = gameRows();
+    $games = array_values(array_filter($allGames, fn($g)=>!gameExcluded($g,$withdrawn)));
+    $excludedGames = array_values(array_filter($allGames, fn($g)=>gameExcluded($g,$withdrawn)));
+    $withdrawnPlayers = [];
     $stats = [];
     foreach (db()->query('SELECT id, name FROM players ORDER BY id') as $player) {
+        if (in_array((int)$player['id'],$withdrawn,true)) { $withdrawnPlayers[]=['id'=>'p'.$player['id'],'name'=>$player['name']]; continue; }
         $stats[$player['id']] = [
             'id' => 'p' . $player['id'], 'name' => $player['name'], 'played' => 0,
             'wins' => 0, 'draws' => 0, 'losses' => 0, 'points' => 0,
@@ -351,6 +359,8 @@ function publicData(): array
 
     return [
         'title' => 'I Copa Lago de Pedra', 'source' => 'SQLite',
+        'withdrawnPlayers'=>$withdrawnPlayers,
+        'excludedGames'=>array_map(fn($g)=>['databaseId'=>(int)$g['id'],'round'=>(int)$g['round_number'],'turn'=>(int)$g['turn_number'],'a'=>$g['a'],'b'=>$g['b'],'scoreA'=>$g['score_a'],'scoreB'=>$g['score_b'],'playedAt'=>$g['played_at'],'status'=>$g['score_a']!==null && $g['score_b']!==null?'annulled':'cancelled'],$excludedGames),
         'players' => $players, 'games' => $publicGames, 'issues' => [],
         'totals' => ['points' => array_sum(array_column($players, 'points')), 'goalsFor' => array_sum(array_column($players, 'goalsFor')), 'goalsAgainst' => array_sum(array_column($players, 'goalsAgainst'))],
         'playedGames' => $playedGames, 'pendingGames' => count($publicGames) - $playedGames,
