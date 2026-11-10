@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.78' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.79' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.78' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.79' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.78' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.79' in public_html
         assert 'id="public-refresh"' in public_html and 'id="public-refresh"' not in login_html
         with guest.open(base+'data.php?format=json') as response:
             assert 'no-store' in response.headers['Cache-Control']
@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.78 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.79 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -891,7 +891,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert db.execute('SELECT COUNT(*) FROM complaint_mail WHERE complaint_id=?',(cid,)).fetchone()[0]>0
         print('OK: canal reservado, confirmacao POST, privacidade, defesa, prazo, anexos, SMTP/reenvio, revogacao, limites e backup; nenhum placar alterado')
         # Withdrawal UI and private reports use only this isolated database.
-        assert 'Desist' in get(admin,'desistencias.php')[1]
+        assert 'Abandonos' in get(admin,'desistencias.php')[1]
         assert get(athlete,'desistencias.php')[0]==403
         form=get(admin,'desistencias.php')[1]
         assert get(admin,'desistencias.php',{'csrf':'bad','action':'preview','players[]':'2','reason':'Fictional decision'})[0]==400

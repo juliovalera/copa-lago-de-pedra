@@ -21,7 +21,7 @@ function competitionReport(array $data, DateTimeImmutable $generated, string $co
     }
     if (!empty($data['withdrawnPlayers'])) {
         $names=implode(', ',array_column($data['withdrawnPlayers'],'name'));
-        foreach ($sections as &$section) $section['note'].=' Desistentes fora dos cálculos: '.$names.'. '.($data['excludedCount']??count($data['excludedGames'])).' jogos anulados/cancelados, sem pontos ou gols.';
+        foreach ($sections as &$section) $section['note'].=' Participantes retirados por abandono fora dos cálculos: '.$names.'. '.($data['excludedCount']??count($data['excludedGames'])).' jogos anulados/cancelados, sem pontos ou gols.';
         unset($section);
     }
     $logos=[];

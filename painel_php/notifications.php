@@ -166,5 +166,5 @@ function accountNotificationText(array $event): string
 
 function withdrawalNotificationText(array $event): string
 {
-    return "Copa Lago de Pedra\n\n" . $event['action'] . ". A administração aplicou a regra de anular os jogos contra desistentes, no turno e returno. Na restauração, voltam a contar somente jogos sem outros desistentes.\n\nA classificação, os gols e a evolução foram recalculados. Os registros originais foram preservados. Confira seus números no site e procure a administração se tiver dúvidas.\n\n" . (config()['base_url'] ?? '') . "\nReferência: " . $event['target'];
+    return "Copa Lago de Pedra\n\n" . strtr($event['action'], ['Desistência registrada'=>'Abandono registrado', 'Desistência restaurada'=>'Abandono restaurado']) . ". A administração aplicou a regra de anular os jogos contra participantes retirados por abandono, no turno e returno. Na restauração, voltam a contar somente jogos sem outros participantes retirados por abandono.\n\nA classificação, os gols e a evolução foram recalculados. Os registros originais foram preservados. Confira seus números no site e procure a administração se tiver dúvidas.\n\n" . (config()['base_url'] ?? '') . "\nReferência: " . $event['target'];
 }

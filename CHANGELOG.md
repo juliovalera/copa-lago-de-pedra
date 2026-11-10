@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.79 - 10/11/2026
+
+- Textos atuais passam a usar abandono para a saída após o início da competição. Painel e ajuda apresentam os arts. 21 e 22 do regulamento da CBFM como referência terminológica, sem incorporar automaticamente sanções ou critérios de pontuação.
+- Cálculos, dados, histórico, rotas e identificadores internos preservados.
+
 ## 1.78 - 09/11/2026
 
 - Painel reconhece automaticamente súmulas digitais finalizadas e confirmações com duas assinaturas e aval, inclusive documentos anteriores, sem duplicar arquivos.

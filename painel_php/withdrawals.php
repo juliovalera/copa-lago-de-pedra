@@ -31,7 +31,7 @@ function gameExcluded(array $game, ?array $ids = null): bool
 
 function requireActiveGame(array $game): void
 {
-    if (gameExcluded($game)) throw new InvalidArgumentException('Jogo anulado ou cancelado por desistência. Consulte a administração.');
+    if (gameExcluded($game)) throw new InvalidArgumentException('Jogo anulado ou cancelado por abandono. Consulte a administração.');
 }
 
 function withdrawalOperation(string $id): array
@@ -51,10 +51,10 @@ function withdrawalPreview(array $ids, string $restore = ''): array
     $current=withdrawnIds();
     if ($restore !== '') {
         $op=withdrawalOperation($restore);
-        if ($op['kind']!=='withdraw') throw new InvalidArgumentException('Escolha uma desistência para restaurar.');
+        if ($op['kind']!=='withdraw') throw new InvalidArgumentException('Escolha um abandono para restaurar.');
         $q=db()->prepare('SELECT player_id FROM withdrawn_players WHERE operation_id=?'); $q->execute([$restore]);
         $ids=array_map('intval',$q->fetchAll(PDO::FETCH_COLUMN));
-        if (!$ids) throw new InvalidArgumentException('Esta desistência já foi restaurada.');
+        if (!$ids) throw new InvalidArgumentException('Este abandono já foi restaurado.');
         $snapshot=json_decode($op['snapshot'],true,512,JSON_THROW_ON_ERROR);
         foreach ($snapshot['games'] as $saved) {
             $now=gameById((int)$saved['id']);
@@ -66,7 +66,7 @@ function withdrawalPreview(array $ids, string $restore = ''): array
     } else {
         $ids=array_values(array_unique(array_map('intval',$ids))); sort($ids);
         $all=array_map('intval',db()->query('SELECT id FROM players')->fetchAll(PDO::FETCH_COLUMN));
-        if (!$ids || array_diff($ids,$all) || array_intersect($ids,$current)) throw new InvalidArgumentException('Selecione participantes que ainda não desistiram.');
+        if (!$ids || array_diff($ids,$all) || array_intersect($ids,$current)) throw new InvalidArgumentException('Selecione participantes que ainda estão ativos.');
         $next=array_values(array_unique(array_merge($current,$ids))); sort($next);
     }
     $games=array_values(array_filter(gameRows(),fn($g)=>in_array((int)$g['player_a_id'],$ids,true)||in_array((int)$g['player_b_id'],$ids,true)));
@@ -129,12 +129,12 @@ function withdrawalReport(array $operation, array $snapshot): array
     $time=(new DateTimeImmutable($operation['created_at']))->setTimezone(new DateTimeZone(config()['timezone']));
     $report=competitionReport($snapshot['after'],$time,'ranking');
     $report['generated']='Operação em '.$time->format('d/m/Y H:i:s').' ('.config()['timezone'].')';
-    $report['title']='Desistências — antes e depois';
+    $report['title']='Abandonos — antes e depois';
     $report['filename']='desistencia-'.$operation['id'];
     $names=[];
     foreach (array_merge($snapshot['before']['players'],$snapshot['before']['withdrawnPlayers']??[]) as $p) if (in_array((int)substr($p['id'],1),$snapshot['ids'],true)) $names[]=$p['name'];
     $report['note']='Operação '.$operation['id'].' • Cópia histórica; alterações posteriores não modificam este relatório.';
-    $note=($operation['kind']==='restore'?'Restauração':'Desistência').': '.implode(', ',$names).'. Responsável: '.$operation['actor'].'. Motivo: '.$operation['reason'];
+    $note=($operation['kind']==='restore'?'Restauração':'Abandono').': '.implode(', ',$names).'. Responsável: '.$operation['actor'].'. Motivo: '.$operation['reason'];
     $sections=[];
     foreach ([true,false] as $direct) {
         $rows=[];
@@ -154,7 +154,7 @@ function withdrawalReport(array $operation, array $snapshot): array
         $excluded=gameExcluded($g,$snapshot['activeAfter']);
         $rows[]=[(string)$g['id'],(string)$g['round_number'],$g['turn_number']==1?'Turno':'Returno',$g['a'],$g['b'],$played?$g['score_a'].' × '.$g['score_b']:'Sem resultado',(string)($g['played_at']??'—'),$excluded?($played?'Anulado':'Cancelado'):'Volta a contar'];
     }
-    $sections[]=['title'=>'Jogos e registros originais preservados','note'=>$note.' Nenhum placar ou anexo foi apagado. Jogos contra outros desistentes continuam excluídos na restauração.','headers'=>['ID','Rod.','Etapa','Jogador A','Jogador B','Original','Data original','Após operação'],'widths'=>[5,5,9,22,22,12,11,14],'left'=>[3,4],'rows'=>$rows];
+    $sections[]=['title'=>'Jogos e registros originais preservados','note'=>$note.' Nenhum placar ou anexo foi apagado. Jogos contra outros participantes retirados por abandono continuam excluídos na restauração.','headers'=>['ID','Rod.','Etapa','Jogador A','Jogador B','Original','Data original','Após operação'],'widths'=>[5,5,9,22,22,12,11,14],'left'=>[3,4],'rows'=>$rows];
     $report['sections']=$sections;
     return $report;
 }
