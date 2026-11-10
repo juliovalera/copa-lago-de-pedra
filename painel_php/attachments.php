@@ -29,6 +29,32 @@ function initialiseAttachments(): void
     db()->exec('CREATE INDEX IF NOT EXISTS attachments_game ON game_attachments(game_id,removed_at)');
 }
 
+// Read existing signed documents; no PDF copy or attachment record is needed.
+function signedGameDocuments(?int $gameId = null): array
+{
+    require_once __DIR__.'/confirmations.php';
+    initialiseConfirmations();
+    $documents=[];
+    $fullAccess=hasFullAccess();
+    $player=(int)(currentUser()['player_id']??0);
+    $sources=[
+        ["SELECT game_id,id,data_json AS snapshot FROM digital_sheets WHERE status='final'", 'sumula-digital.php?document=', 'Súmula digital assinada'],
+        ["SELECT game_id,id,snapshot FROM match_confirmations WHERE status='final' AND signature_a IS NOT NULL AND signature_a<>'' AND signature_b IS NOT NULL AND signature_b<>'' AND approved_at IS NOT NULL AND approved_at<>''", 'sumula-confirmada.php?id=', 'Súmula confirmada pelos jogadores e pela organização'],
+    ];
+    foreach ($sources as [$sql,$url,$title]) {
+        if ($gameId !== null) $sql.=' AND game_id=?';
+        $query=db()->prepare($sql);
+        $query->execute($gameId !== null ? [$gameId] : []);
+        foreach ($query->fetchAll() as $row) {
+            $snapshot=json_decode($row['snapshot'],true);
+            if (!is_array($snapshot)) continue;
+            if (!$fullAccess && (!$player || !in_array($player,[(int)($snapshot['player_a_id']??0),(int)($snapshot['player_b_id']??0)],true))) continue;
+            $documents[(int)$row['game_id']][]=['url'=>$url.rawurlencode((string)$row['id']),'title'=>$title];
+        }
+    }
+    return $documents;
+}
+
 function attachmentDirectory(): string
 {
     $dir=config()['attachment_directory']??(dirname(config()['database']).'/sumulas');

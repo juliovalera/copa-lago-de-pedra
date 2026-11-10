@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.77' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.78' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.77' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.78' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.77' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.78' in public_html
         assert 'id="public-refresh"' in public_html and 'id="public-refresh"' not in login_html
         with guest.open(base+'data.php?format=json') as response:
             assert 'no-store' in response.headers['Cache-Control']
@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.77 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.78 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -380,6 +380,8 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert get(guest,path,dict(inputs,csrf='invalid',mode='draft',revision=0,result_token=hidden(digital,'result_token')))[0]==422
         status,draft,_=get(guest,path,dict(inputs,csrf=csrf(digital),mode='draft',revision=0,result_token=hidden(digital,'result_token')))
         assert status==200 and db.execute('SELECT score_a FROM games WHERE id=648').fetchone()[0] is None
+        assert 'id="game-648"' not in get(admin,'admin.php?attachment=with')[1]
+        assert 'sumula-digital.php?document=' not in get(admin,'anexos.php?game=648')[1]
         fixture=draft.replace('href="admin.css"','href="../painel_php/public/admin.css"').replace('href="digital.css?', 'href="../painel_php/public/digital.css?').replace('src="digital.js?', 'src="../painel_php/public/digital.js?')
         (ROOT/'previews/digital-form.html').write_text(fixture,encoding='utf-8')
         sig=json.dumps([[[10+i*20,50+i%2*30] for i in range(12)]])
@@ -553,15 +555,17 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         finally:
             db.executemany('UPDATE games SET score_a=?,score_b=?,played_at=? WHERE id=?',[(a,b,d,i) for i,a,b,d in before_dates]);db.commit()
         print('OK: panel date filter, pagination, status/attachment combinations, impossible date and player scope')
-        assert filtered_ids(admin,'attachment=with')=={1}
-        assert filtered_ids(athlete,'attachment=with')=={1}
+        assert filtered_ids(admin,'attachment=with')=={1,648}
+        assert 'sumula-digital.php?document=' in get(athlete,'anexos.php?game=648')[1]
+        assert 'Ver súmula assinada' in get(athlete,'admin.php?attachment=with')[1]
+        assert filtered_ids(athlete,'attachment=with')=={1,648}
         assert 1 not in filtered_ids(admin,'attachment=without')
         assert filtered_ids(admin,'attachment=with&player=1&opponent=2')=={1}
         assert filtered_ids(admin,'attachment=with&player=2&opponent=1')=={1}
-        assert not filtered_ids(admin,'attachment=with&player=3')
+        assert filtered_ids(admin,'attachment=with&player=3')=={648}
         played=db.execute('SELECT score_a IS NOT NULL AND score_b IS NOT NULL FROM games WHERE id=1').fetchone()[0]
-        assert filtered_ids(admin,'attachment=with&status='+('played' if played else 'pending'))=={1}
-        assert not filtered_ids(admin,'attachment=with&status='+('pending' if played else 'played'))
+        assert filtered_ids(admin,'attachment=with&player=2&status='+('played' if played else 'pending'))=={1}
+        assert not filtered_ids(admin,'attachment=with&player=2&status='+('pending' if played else 'played'))
         page=get(admin,'admin.php?attachment=without&page=2')[1]
         assert 'attachment=without' in page and len(filtered_ids(admin,'attachment=without&page=2'))==24
         assert filtered_ids(admin,'attachment=invalid')==filtered_ids(admin,'')
@@ -569,7 +573,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert filtered_ids(athlete,'attachment=without&player=3').issubset(allowed)
         remaining=db.execute('SELECT id FROM game_attachments WHERE removed_at IS NULL').fetchone()[0]
         db.execute("UPDATE game_attachments SET removed_at='test' WHERE id=?",(remaining,));db.commit()
-        assert not filtered_ids(admin,'attachment=with')
+        assert filtered_ids(admin,'attachment=with')=={648}
         assert 1 in filtered_ids(admin,'attachment=without')
         db.execute('UPDATE game_attachments SET removed_at=NULL WHERE id=?',(remaining,));db.commit()
         print('OK: attachment filters, combined status/players, pagination, invalid values, removed files and athlete scope')
@@ -601,6 +605,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         get(admin,'confirmacoes.php',{'csrf':'invalid','action':'create','game':652,'days':7})
         assert db.execute('SELECT COUNT(*) FROM match_confirmations').fetchone()[0]==0
         cid,paths,document=make_confirmation()
+        assert 652 not in filtered_ids(admin,'attachment=with')
         assert 'hash_a' not in document and 'result_token' not in document
         raw_token=paths[0].split('t=')[1]
         assert raw_token not in str(db.execute('SELECT * FROM match_confirmations').fetchall())
@@ -631,7 +636,17 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         assert final_html.count('<svg')==2 and 'Partida realizada sem' in final_html
         print_path='sumula-confirmada.php?id='+cid
         assert get(guest,print_path)[2].endswith('admin.php')
-        assert get(athlete,print_path)[0]==403
+        assert get(athlete,print_path)[0]==200
+        assert 652 in filtered_ids(athlete,'attachment=with')
+        assert print_path in get(athlete,'anexos.php?game=652')[1]
+        db.execute("UPDATE users SET player_id=3 WHERE username='Atleta'");db.commit()
+        try:
+            assert get(athlete,print_path)[0]==403
+            assert get(athlete,'anexos.php?game=652')[0]==403
+            assert 652 not in filtered_ids(athlete,'attachment=with')
+        finally:
+            db.execute("UPDATE users SET player_id=1 WHERE username='Atleta'");db.commit()
+
         status,printed,_=get(admin,print_path)
         assert status==200 and printed.count('<svg')==2 and 'AVAL DA ORGANIZA' in printed
         assert 'sumula.css?' in printed and 'lago_de_pedra.png' in printed and 'liga_mogiana.png' in printed

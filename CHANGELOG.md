@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.78 - 09/11/2026
+
+- Painel reconhece automaticamente súmulas digitais finalizadas e confirmações com duas assinaturas e aval, inclusive documentos anteriores, sem duplicar arquivos.
+- Filtro Com/sem súmula inclui documentos assinados e anexos manuais; rascunhos não contam. Consulta e PDF ficam acessíveis aos participantes e administradores.
+
 ## 1.77 - 09/11/2026
 
 - Súmula digital finalizada usa o modelo oficial na consulta e impressão/PDF: dois logos, rodada, turno, data, horário, local, mesa, árbitro, placares por tempo, observações e três assinaturas.

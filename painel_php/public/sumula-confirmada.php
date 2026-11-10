@@ -4,7 +4,6 @@ session_start();
 require dirname(__DIR__).'/db.php';
 require dirname(__DIR__).'/confirmations.php';
 initialiseDatabase(); requirePanelAccess();
-if (!hasFullAccess()) { http_response_code(403); exit('Acesso exclusivo da administração.'); }
 initialiseConfirmations();
 header('Cache-Control: no-store'); header('Referrer-Policy: no-referrer'); header('X-Robots-Tag: noindex, nofollow');
 function h(mixed $value): string { return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8'); }
@@ -14,10 +13,12 @@ try {
     if ($row['status']!=='final' || !$row['signature_a'] || !$row['signature_b'] || !$row['approved_at']) throw new InvalidArgumentException('A súmula precisa das duas assinaturas e do aval antes da impressão.');
 } catch (InvalidArgumentException $e) { http_response_code(404); exit(h($e->getMessage())); }
 $s=json_decode($row['snapshot'],true,512,JSON_THROW_ON_ERROR);
+$player=(int)(currentUser()['player_id']??0);
+if (!hasFullAccess() && (!$player || !in_array($player,[(int)$s['player_a_id'],(int)$s['player_b_id']],true))) { http_response_code(403); exit('Acesso restrito aos participantes e administradores.'); }
 $current=confirmationCurrent($row);
 ?>
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Súmula assinada · Rodada <?= h($s['round']) ?> · Copa Lago de Pedra</title><link rel="stylesheet" href="sumula.css?v=<?= filemtime(__DIR__.'/sumula.css') ?>"><link rel="stylesheet" href="sumula-confirmada.css?v=<?= copaVersion() ?>"><script src="confirmations.js?v=<?= copaVersion() ?>" defer></script></head>
-<body><div class="print-actions"><a href="confirmacoes.php?id=<?= h($row['id']) ?>">← Voltar</a><button type="button" data-print>Imprimir / salvar PDF</button></div>
+<body><div class="print-actions"><a href="anexos.php?game=<?= h($row['game_id']) ?>">← Voltar</a><button type="button" data-print>Imprimir / salvar PDF</button></div>
 <main class="sheet confirmed-sheet"><header class="brand"><img class="copa-logo" src="asset.php?file=lago_de_pedra.png" alt="I Copa Lago de Pedra"><div class="brand-title"><h1>I COPA LAGO DE PEDRA<br>DE FUTEBOL DE BOTÃO</h1></div><img class="liga-logo" src="asset.php?file=liga_mogiana.png" alt="Liga Mogiana de Futebol de Botão"></header>
 <h2 class="official-title">SÚMULA OFICIAL DE PARTIDA - REGRA 12 TOQUES</h2>
 <?php if (!$current): ?><p class="historical-note">DOCUMENTO HISTÓRICO — o resultado ou a data foi alterado após esta confirmação. As assinaturas abaixo correspondem aos dados deste documento.</p><?php endif ?>
