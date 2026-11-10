@@ -307,3 +307,5 @@ No painel administrativo, **Desistências** permite selecionar participantes e r
 Cada operação tem backup JSON privado e relatório PDF com logos, antes/depois/diferenças, jogos e justificativa. A restauração administrativa remove apenas a desistência selecionada e recalcula com as demais vigentes. Não importa arquivos JSON enviados pelo usuário nem sobrescreve jogos posteriores. Prévias expiram em 30 minutos e são rejeitadas se os dados mudarem. Escritas nos resultados excluídos são bloqueadas no servidor e no SQLite. Operação, backup e auditoria são atômicos; avisos consolidados são enviados depois do commit. Não há tarefa agendada.
 
 Atualizar o código cria apenas a estrutura; nenhuma desistência é aplicada automaticamente. Testes adicionais: `php -c painel_php/php.ini painel_php/tests/withdrawals.php` (banco temporário e e-mails simulados).
+
+A consulta de súmulas digitais finalizadas usa o modelo oficial com logos e os dados/assinaturas do snapshot original. O PDF é salvo pela impressão do navegador. O template `digital-final.php` só é renderizado após as verificações de acesso de `sumula-digital.php`; não altera os registros salvos.

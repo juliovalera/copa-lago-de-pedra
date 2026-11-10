@@ -60,12 +60,12 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
             try: get(guest,'admin.php'); break
             except URLError: time.sleep(.1)
         status,login_html,_=get(guest,'admin.php')
-        assert 'Voltar à área pública' in login_html and 'Versão 1.76' in login_html
+        assert 'Voltar à área pública' in login_html and 'Versão 1.77' in login_html
         assert login_html.count('id="login"')==1
         status,guide_html,_=get(guest,'guia.php')
-        assert status==200 and '<svg' in guide_html and 'Versão 1.76' in guide_html
+        assert status==200 and '<svg' in guide_html and 'Versão 1.77' in guide_html
         status,public_html,_=get(guest,'index.php')
-        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.76' in public_html
+        assert status==200 and 'href="guia.php"' in public_html and 'Versão 1.77' in public_html
         assert 'id="public-refresh"' in public_html and 'id="public-refresh"' not in login_html
         with guest.open(base+'data.php?format=json') as response:
             assert 'no-store' in response.headers['Cache-Control']
@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         login_html = credits_preview(login_html)
         (ROOT/'previews/guia.html').write_text(guide_html.replace('href="guia.css?', 'href="../painel_php/public/guia.css?'),encoding='utf-8')
         (ROOT/'previews/login.html').write_text(login_html.replace('href="admin.css?', 'href="../painel_php/public/admin.css?'),encoding='utf-8')
-        print('OK: retorno publico, guia sem login e versao 1.76 consistente')
+        print('OK: retorno publico, guia sem login e versao 1.77 consistente')
         status,html,url=get(guest,'auditoria.php')
         assert url.endswith('admin.php') and 'Histórico de ações' not in html
         athlete=client();get(athlete,'admin.php',{'login':'Atleta','password':'test-only'})
@@ -384,14 +384,17 @@ with tempfile.TemporaryDirectory(prefix='copa-audit-http-') as directory:
         (ROOT/'previews/digital-form.html').write_text(fixture,encoding='utf-8')
         sig=json.dumps([[[10+i*20,50+i%2*30] for i in range(12)]])
         status,receipt,_=get(guest,path,dict(inputs,csrf=csrf(draft),mode='final',revision=hidden(draft,'revision'),result_token=hidden(draft,'result_token'),consent=1,signature_a=sig,signature_b=sig,signature_referee=sig))
-        assert status==200 and '<polyline' in receipt
+        assert status==200 and receipt.count('<polyline')==3
+        assert 'REGRA 12 TOQUES' in receipt and 'copa-logo' in receipt and 'liga-logo' in receipt and 'TURNO' in receipt
+        assert 'class="filled"' in receipt and 'HORÁRIO' in receipt
+        assert get(guest,'digital-final.php')[0]==404
         assert db.execute('SELECT score_a,score_b FROM games WHERE id=648').fetchone()==(3,1)
         doc=db.execute('SELECT id FROM digital_sheets WHERE game_id=648').fetchone()[0]
         assert get(client(),'sumula-digital.php?document='+str(doc))[0]==403
         assert get(client(),path)[0]==403
         assert get(normal_admin,'sumula-digital.php?document='+str(doc))[0]==200
         assert get(admin,'sumulas-digitais.php')[0]==200
-        fixture=receipt.replace('href="admin.css"','href="../painel_php/public/admin.css"').replace('href="digital.css?', 'href="../painel_php/public/digital.css?').replace('src="digital.js?', 'src="../painel_php/public/digital.js?')
+        fixture=receipt.replace('<head>','<head><base href="/painel_php/public/">').replace('asset.php?file=lago_de_pedra.png','/site/lago_de_pedra.png').replace('asset.php?file=liga_mogiana.png','/site/liga_mogiana.png')
         (ROOT/'previews/digital-final.html').write_text(fixture,encoding='utf-8')
         assert 'Resultado já enviado' in get(client(),'arbitro.php?t='+link)[1]
         print('OK: escolha papel/digital, CSRF, rascunho, assinaturas, finalizacao e consulta privada HTTP')

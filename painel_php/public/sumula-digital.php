@@ -60,21 +60,14 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     } catch (Throwable $e) { http_response_code(503); $error='Não foi possível salvar. Reabra a súmula e confira o rascunho antes de tentar novamente.'; $blocked=true; }
 }
 $a=$values['a']??$game['a']??''; $b=$values['b']??$game['b']??'';
+if ($readOnly) { require __DIR__.'/digital-final.php'; exit; }
 ?>
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Súmula digital · Copa Lago de Pedra</title><link rel="stylesheet" href="admin.css"><link rel="stylesheet" href="digital.css?v=<?= filemtime(__DIR__.'/digital.css') ?>"><script src="digital.js?v=<?= filemtime(__DIR__.'/digital.js') ?>" defer></script></head>
 <body><main class="admin digital-page"><header><p class="eyebrow">I COPA LAGO DE PEDRA</p><h1>Súmula digital<?= $readOnly?' — finalizada':'' ?></h1><h2><?= h($a) ?> × <?= h($b) ?></h2><p>Rodada <?= h($values['round']??$game['round_number']??'') ?> · <?= h(date('d/m/Y',strtotime($date))) ?></p></header>
 <nav class="no-print header-actions"><a class="button button-outline-dark" href="sumulas-digitais.php">Minhas súmulas no painel</a><a class="button button-outline-dark" href="index.php">Área pública</a></nav>
 <?php if ($message): ?><p class="flash" role="status"><?= h($message) ?></p><?php endif ?>
 <?php if ($error): ?><p class="error" role="alert"><?= h($error) ?></p><?php endif ?>
-<?php if ($readOnly): ?>
-<section class="admin-card"><dl class="digital-info"><?php foreach (['venue'=>'Local','time'=>'Horário','table'=>'Mesa','referee'=>'Árbitro'] as $key=>$label): ?><div><dt><?= h($label) ?></dt><dd><?= h($values[$key]?:'Não informado') ?></dd></div><?php endforeach ?></dl>
-<table class="digital-scores"><thead><tr><th>Registro</th><th><?= h($a) ?></th><th><?= h($b) ?></th></tr></thead><tbody><tr><th>1º tempo</th><td><?= h($values['first_a']) ?></td><td><?= h($values['first_b']) ?></td></tr><tr><th>2º tempo</th><td><?= h($values['second_a']) ?></td><td><?= h($values['second_b']) ?></td></tr><tr><th>Placar final</th><td><?= (int)$values['first_a']+(int)$values['second_a'] ?></td><td><?= (int)$values['first_b']+(int)$values['second_b'] ?></td></tr></tbody></table>
-<h3>Ocorrências e observações</h3><p class="digital-notes"><?= h($values['notes']?:'Sem observações.') ?></p>
-<div class="signature-grid"><?php foreach (['a'=>$a,'b'=>$b,'referee'=>'Árbitro: '.$values['referee']] as $who=>$name): ?><section><h3><?= h($name) ?></h3><?= digitalSignatureSvg($signatures[$who]) ?></section><?php endforeach ?></div>
-<p>Finalizada em <?= h(date('d/m/Y H:i:s',strtotime($sheet['finalized_at']))) ?> (<?= h(config()['timezone']) ?>). Responsável pelo envio: <?= h($sheet['updated_by']) ?>.</p><p>Documento nº <?= (int)$sheet['id'] ?>. Esta ficha preserva o registro original. Correções posteriores no painel não alteram as assinaturas.</p>
-<?php if ($game && ($game['score_a']!=(int)$values['first_a']+(int)$values['second_a'] || $game['score_b']!=(int)$values['first_b']+(int)$values['second_b'] || $game['played_at']!==$date)): ?><p class="error">O resultado atual do jogo difere desta ficha original. Consulte a organização e a auditoria.</p><?php endif ?>
-</section><p class="no-print"><button class="button button-primary" type="button" id="digital-print">Imprimir / salvar em PDF</button></p><p class="no-print">Na janela de impressão do dispositivo, escolha “Salvar como PDF”, quando disponível.</p>
-<?php elseif ($blocked): ?><p class="error">O jogo já foi registrado, a data passou ou houve alteração em outro acesso. Nenhum dado foi sobrescrito.</p><a class="button button-outline-dark" href="<?= h($action) ?>">Reabrir e conferir a súmula</a>
+<?php if ($blocked): ?><p class="error">O jogo já foi registrado, a data passou ou houve alteração em outro acesso. Nenhum dado foi sobrescrito.</p><a class="button button-outline-dark" href="<?= h($action) ?>">Reabrir e conferir a súmula</a>
 <?php else: ?>
 <p>Preencha a ficha e confira com os jogadores. Você pode salvar um rascunho antes de coletar as assinaturas. Para salvar ou finalizar, mantenha conexão com a internet.</p>
 <noscript><p class="error">Ative o JavaScript para desenhar as assinaturas. A opção de impressão com QR continua disponível.</p></noscript>

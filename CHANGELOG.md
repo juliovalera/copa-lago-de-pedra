@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.77 - 09/11/2026
+
+- Súmula digital finalizada usa o modelo oficial na consulta e impressão/PDF: dois logos, rodada, turno, data, horário, local, mesa, árbitro, placares por tempo, observações e três assinaturas.
+- Dados e assinaturas originais preservados, inclusive em fichas anteriores; aviso histórico quando o jogo foi alterado ou excluído por desistência. Formulário de preenchimento permanece o mesmo.
+
 ## 1.76 - 09/11/2026
 
 - Gestão administrativa de desistências, em lote ou futuras, com prévia obrigatória e justificativa.
