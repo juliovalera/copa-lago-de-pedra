@@ -311,3 +311,7 @@ Atualizar o código cria apenas a estrutura; nenhum abandono é aplicado automat
 A consulta de súmulas digitais finalizadas usa o modelo oficial com logos e os dados/assinaturas do snapshot original. O PDF é salvo pela impressão do navegador. O template `digital-final.php` só é renderizado após as verificações de acesso de `sumula-digital.php`; não altera os registros salvos.
 
 A nomenclatura **abandono** usa como referência os arts. 21 e 22 (p. 15) do [regulamento do Campeonato Brasileiro Individual, 12 Toques, disponibilizado pela CBFM](https://www.cbfm.com.br/download/16851/#page=15). É um regulamento esportivo, não uma lei estatal. A referência não incorpora automaticamente sanções nem regras de pontuação: permanece a decisão aprovada para esta Copa. Rotas, identificadores internos e eventos históricos da auditoria conservam os nomes anteriores por compatibilidade.
+
+### Estatísticas
+
+A aba pública Estatísticas reúne desempenho individual, comparação e evolução, além de curiosidades da Copa. As contas usam os resultados ativos do mesmo conjunto público, ignorando pendentes e confrontos excluídos. Médias trazem o tamanho da amostra; marcas empatadas são apresentadas juntas. Não infere sequências cronológicas de jogos sem horário. As atualizações automáticas recalculam os indicadores mantendo a seleção de jogadores. O endereço `#evolucao` segue compatível com `#estatisticas`.

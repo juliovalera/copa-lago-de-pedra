@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.80 - 13/11/2026
+
+- Aba Estatísticas preserva a evolução e comparação com até três outros jogadores; links antigos de evolução continuam funcionando.
+- Médias de gols, aproveitamento, jogos sem sofrer gols, empates, vitórias e placares frequentes, sempre com quantidade de partidas.
+- Números e curiosidades da Copa incluem marcas empatadas. Somente resultados válidos e ativos; sem alterações no banco ou na classificação.
+
 ## 1.79 - 10/11/2026
 
 - Textos atuais passam a usar abandono para a saída após o início da competição. Painel e ajuda apresentam os arts. 21 e 22 do regulamento da CBFM como referência terminológica, sem incorporar automaticamente sanções ou critérios de pontuação.

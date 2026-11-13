@@ -173,8 +173,72 @@
   });
 
   $('#history-player').innerHTML = [...players].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p => `<option value="${p.id}">${escape(p.name)}</option>`).join('');
+
+  // Only valid, completed matches from the active public competition count.
+  function statisticsGames() {
+    return data.games.filter(g => g.status === 'played' && Number.isInteger(g.scoreA) && Number.isInteger(g.scoreB) && g.scoreA >= 0 && g.scoreB >= 0);
+  }
+  const statNumber = value => value.toLocaleString('pt-BR', {maximumFractionDigits: 2});
+  const statMean = (total, count) => count ? statNumber(total / count) : '—';
+  function playerNumbers(p, games) {
+    const matches=games.filter(g=>g.a===p.name || g.b===p.name);
+    let goals=0, conceded=0, wins=0, draws=0, clean=0;
+    const scores=new Map();
+    matches.forEach(g=>{
+      const a=g.a===p.name ? g.scoreA : g.scoreB, b=g.a===p.name ? g.scoreB : g.scoreA;
+      goals+=a; conceded+=b; wins+=a>b?1:0; draws+=a===b?1:0; clean+=b===0?1:0;
+      const key=`${a} × ${b}`; scores.set(key,(scores.get(key)||0)+1);
+    });
+    return {matches, goals, conceded, wins, draws, clean, scores};
+  }
+  function commonScores(scores) {
+    if (!scores.size) return 'Ainda sem placares registrados.';
+    const max=Math.max(...scores.values());
+    const tied=[...scores].filter(([,n])=>n===max).map(([score])=>score);
+    return `${tied.join('; ')} — ${max} ocorrência(s) cada${tied.length>1?' (empatados)':''}.`;
+  }
+  function statCards(items) {
+    return `<div class="statistics-grid">${items.map(([label,value,note])=>`<article class="statistics-card"><h4>${escape(label)}</h4><strong>${escape(value)}</strong><p>${escape(note)}</p></article>`).join('')}</div>`;
+  }
+  function renderStatistics() {
+    const games=statisticsGames();
+    const selectedIds=[$('#history-player').value,...($('#history-compare').checked?comparisonSelects.map(s=>s.value):[])];
+    const selected=[...new Set(selectedIds)].map(id=>players.find(p=>p.id===id)).filter(Boolean);
+    const main=selected[0];
+    const priorMore=$('#statistics-player details')?.open || false;
+    if (!main) $('#statistics-player').innerHTML='<p>Nenhum participante ativo para consultar.</p>';
+    else {
+      const n=playerNumbers(main,games), count=n.matches.length;
+      $('#statistics-player').innerHTML=`<h3>Desempenho de ${escape(main.name)}</h3><p>${count} partida(s) com resultado válido. Médias devem ser lidas junto da quantidade de jogos.</p>${statCards([
+        ['Gols marcados por jogo',statMean(n.goals,count),`${n.goals} gols em ${count} partidas`],
+        ['Gols sofridos por jogo',statMean(n.conceded,count),`${n.conceded} gols em ${count} partidas`],
+        ['Aproveitamento',count?statNumber((n.wins*3+n.draws)/(count*3)*100)+'%':'—','Pontos conquistados sobre os pontos disputados']
+      ])}<details${priorMore?' open':''}><summary>Ver mais números</summary>${statCards([
+        ['Sem sofrer gols',count?String(n.clean):'—','Inclui empates em 0 × 0'],
+        ['Partidas empatadas',count?statNumber(n.draws/count*100)+'%':'—',`${n.draws} empates em ${count} partidas`],
+        ['Vitórias',count?String(n.wins):'—',`${count-n.wins-n.draws} derrotas em ${count} partidas`]
+      ])}<h4>Placar mais frequente</h4><p>${escape(commonScores(n.scores))}</p><p>Seu placar aparece primeiro, independentemente do lado da tabela.</p></details>`;
+      if(selected.length>1) $('#statistics-player').innerHTML+=`<div class="history-comparison-scroll" tabindex="0" role="region" aria-label="Comparação das estatísticas"><table class="history-comparison-table"><caption>Comparar desempenho atual</caption><thead><tr><th scope="col">Botonista</th><th scope="col">Jogos</th><th scope="col">Gols por jogo</th><th scope="col">Sofridos por jogo</th><th scope="col">Aproveitamento</th></tr></thead><tbody>${selected.map(p=>{const n=playerNumbers(p,games), c=n.matches.length;return `<tr><th scope="row">${escape(p.name)}</th><td>${c}</td><td>${statMean(n.goals,c)}</td><td>${statMean(n.conceded,c)}</td><td>${c?statNumber((n.wins*3+n.draws)/(c*3)*100)+'%':'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
+    }
+    const priorCopa=$('#statistics-copa details')?.open || false;
+    const total=games.reduce((sum,g)=>sum+g.scoreA+g.scoreB,0), draws=games.filter(g=>g.scoreA===g.scoreB).length;
+    const scores=new Map();
+    games.forEach(g=>{const key=`${Math.max(g.scoreA,g.scoreB)} × ${Math.min(g.scoreA,g.scoreB)}`;scores.set(key,(scores.get(key)||0)+1);});
+    const record=(title,measure)=>{
+      if(!games.length) return `<h4>${title}</h4><p>Ainda sem partidas com resultado.</p>`;
+      const highest=Math.max(...games.map(measure)), tied=games.filter(g=>measure(g)===highest);
+      return `<h4>${title}: ${highest} gol(s)</h4><p>${tied.length} partida(s) com essa marca.</p><ul>${tied.map(g=>`<li>${escape(g.a)} ${g.scoreA} × ${g.scoreB} ${escape(g.b)} · Rodada ${escape(g.round)} · ${g.turn===1?'Turno':'Returno'}</li>`).join('')}</ul>`;
+    };
+    $('#statistics-copa').innerHTML=`<h3>Números da Copa</h3><p>${games.length} partida(s) com resultado. Cada partida entra uma vez nesta conta.</p>${statCards([
+      ['Total de gols',String(total),'Soma dos gols dos dois jogadores'],
+      ['Gols por partida',statMean(total,games.length),'Média dos gols dos dois adversários juntos'],
+      ['Empates',games.length?statNumber(draws/games.length*100)+'%':'—',`${draws} partidas empatadas`]
+    ])}<details${priorCopa?' open':''}><summary>Curiosidades da Copa</summary><h4>Placar mais frequente</h4><p>${escape(commonScores(scores))}</p><p>O maior placar vem primeiro: 2 × 1 e 1 × 2 contam juntos.</p>${record('Partidas com mais gols',g=>g.scoreA+g.scoreB)}${record('Maior diferença de placar',g=>Math.abs(g.scoreA-g.scoreB))}</details><p class="statistics-note">Jogos pendentes e confrontos excluídos por abandono não entram nas estatísticas. Resultados sem data contam nestes números, mas não no gráfico de evolução. Não calculamos sequências de vitórias, pois a ordem de jogos no mesmo dia pode ser desconhecida.</p>`;
+  }
+
   function renderHistory() {
     syncHistoryPlayers();
+    renderStatistics();
     if ($('#history-compare').checked && comparisonSelects.some(s => s.value)) { renderComparison(); return; }
     const p = players.find(p => p.id === $('#history-player').value);
     if (!p) { $('#history-content').innerHTML='<p>Nenhum participante ativo para mostrar.</p>'; return; }
@@ -311,11 +375,11 @@
     });
   }
   function route() {
-    const hash = location.hash.slice(1);
+    const hash = location.hash.slice(1) === 'estatisticas' ? 'evolucao' : location.hash.slice(1);
     const page = ['classificacao','jogos','evolucao'].includes(hash) ? hash : 'classificacao';
     document.querySelectorAll('.page').forEach(p => { p.hidden = p.id !== page; });
     document.querySelectorAll('[data-page]').forEach(link => { if (link.dataset.page===page) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
-    document.title = `${{classificacao:'Classificação',jogos:'Jogos',evolucao:'Evolução'}[page]} · I Copa Lago de Pedra`;
+    document.title = `${{classificacao:'Classificação',jogos:'Jogos',evolucao:'Estatísticas'}[page]} · I Copa Lago de Pedra`;
   }
   window.addEventListener('hashchange', route);
   $('#download').addEventListener('click', () => {
