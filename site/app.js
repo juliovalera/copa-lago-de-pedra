@@ -172,7 +172,8 @@
     if (event.target === $('#player-dialog')) { const rect = event.target.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) event.target.close(); }
   });
 
-  $('#history-player').innerHTML = [...players].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p => `<option value="${p.id}">${escape(p.name)}</option>`).join('');
+  const historyPlaceholder = '<option value="">Selecione um botonista</option>';
+  $('#history-player').innerHTML = historyPlaceholder + [...players].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p => `<option value="${p.id}">${escape(p.name)}</option>`).join('');
 
   // Only valid, completed matches from the active public competition count.
   function statisticsGames() {
@@ -206,7 +207,7 @@
     const selected=[...new Set(selectedIds)].map(id=>players.find(p=>p.id===id)).filter(Boolean);
     const main=selected[0];
     const priorMore=$('#statistics-player details')?.open || false;
-    if (!main) $('#statistics-player').innerHTML='<p>Nenhum participante ativo para consultar.</p>';
+    if (!main) $('#statistics-player').innerHTML=players.length ? '<p>Selecione um botonista para consultar seu desempenho e sua evolução.</p>' : '<p>Nenhum participante ativo para consultar.</p>';
     else {
       const n=playerNumbers(main,games), count=n.matches.length;
       $('#statistics-player').innerHTML=`<h3>Desempenho de ${escape(main.name)}</h3><p>${count} partida(s) com resultado válido. Médias devem ser lidas junto da quantidade de jogos.</p>${statCards([
@@ -241,7 +242,7 @@
     renderStatistics();
     if ($('#history-compare').checked && comparisonSelects.some(s => s.value)) { renderComparison(); return; }
     const p = players.find(p => p.id === $('#history-player').value);
-    if (!p) { $('#history-content').innerHTML='<p>Nenhum participante ativo para mostrar.</p>'; return; }
+    if (!p) { $('#history-content').innerHTML=players.length ? '' : '<p>Nenhum participante ativo para mostrar.</p>'; return; }
     const history = [...p.history].sort((a,b) => (a.date || '').localeCompare(b.date || ''));
     const dateLabel = date => date ? date.split('-').reverse().join('/') : '';
     const warning = data.historyUndatedGames ? `<p role="note">Histórico parcial: ${data.historyUndatedGames} jogo(s) com resultado estão sem data válida e não entram neste gráfico. Eles continuam contando na classificação atual.</p>` : '';
@@ -256,10 +257,15 @@
   $('#history-player').addEventListener('change', renderHistory);
   const comparisonSelects = [...document.querySelectorAll('[data-history-peer]')];
   comparisonSelects.forEach(select => {
-    select.innerHTML = '<option value="">Não comparar</option>' + $('#history-player').innerHTML;
+    select.innerHTML = '<option value="">Não comparar</option>' + [...$('#history-player').options].filter(o=>o.value).map(o=>o.outerHTML).join('');
     select.addEventListener('change', renderHistory);
   });
   function syncHistoryPlayers() {
+    const hasPlayer=players.some(p=>p.id===$('#history-player').value);
+    $('.history-comparison-controls').hidden=!hasPlayer;
+    $('#history-evolution-title').hidden=!hasPlayer;
+    $('#history-compare').disabled=!hasPlayer;
+    if (!hasPlayer) { $('#history-compare').checked=false; comparisonSelects.forEach(select=>select.value=''); }
     const used = new Set([$('#history-player').value]);
     comparisonSelects.forEach(select => {
       if (used.has(select.value)) select.value = '';
@@ -413,7 +419,7 @@
         replaceOptions(select, select.options[0].outerHTML + options, selected);
       }
       const historyOptions = names.map(p=>`<option value="${escape(p.id)}">${escape(p.name)}</option>`).join('');
-      replaceOptions($('#history-player'), historyOptions, $('#history-player').value);
+      replaceOptions($('#history-player'), historyPlaceholder + historyOptions, $('#history-player').value);
       comparisonSelects.forEach(select=>replaceOptions(select, select.options[0].outerHTML+historyOptions, select.value));
       const dates = [...new Set(data.games.filter(validPlayedDate).map(g=>g.playedAt))].sort().reverse();
       const dateSelect = $('#game-date'), selectedDate = dateSelect.value;

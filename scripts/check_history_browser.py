@@ -61,6 +61,9 @@ try:
         time.sleep(.6)
         assert js("document.querySelector('#competition-progress').value===31 && document.querySelector('#competition-progress').max===32 && document.querySelector('.competition-progress-heading strong').textContent==='96,9%'")
         assert js("document.querySelector('[data-page=evolucao]').textContent==='Estatísticas'")
+        assert js("document.querySelector('#history-player').value==='' && document.querySelector('#history-compare').disabled && !document.querySelector('#history-content').textContent")
+        assert js("!document.querySelector('#statistics-player .statistics-card') && document.querySelector('#statistics-copa .statistics-card')!==null")
+        js("document.querySelector('#history-player').value='1';document.querySelector('#history-player').dispatchEvent(new Event('change'))")
         assert js("document.querySelector('#statistics-player').textContent.includes('28 partida(s)')")
         assert js("document.querySelector('#statistics-player details').textContent.includes('0 × 0')")
         assert js("document.querySelector('#statistics-copa .statistics-card strong').textContent==='3'")
@@ -119,10 +122,17 @@ try:
         js("window.COPA_DATA.players.forEach(p=>p.history=[]);document.querySelector('#history-player').dispatchEvent(new Event('change'))")
         assert js("!!document.querySelector('.history-empty')")
         call('Page.reload');time.sleep(.4)
+        js("document.querySelector('#history-player').value='1';document.querySelector('#history-player').dispatchEvent(new Event('change'))")
         js("document.querySelector('#history-compare').click();[...document.querySelectorAll('[data-history-peer]')].forEach((s,i)=>{s.value=String(i+2);s.dispatchEvent(new Event('change'))});document.querySelector('#evolucao').scrollIntoView()")
         call('Emulation.setDeviceMetricsOverride',dict(width=390,height=1200,deviceScaleFactor=1,mobile=False))
         (ROOT/'previews/history.png').write_bytes(base64.b64decode(call('Page.captureScreenshot')['data']))
         print('OK: individual/comparison, four series, duplicates, escaping, exact table values, missing history, single date, empty history and mobile layout')
+
+        js("document.querySelector('#history-player').value='';document.querySelector('#history-player').dispatchEvent(new Event('change'))")
+        assert js("!document.querySelector('#history-content').textContent && document.querySelector('.history-comparison-controls').hidden && !document.querySelector('#history-compare').checked")
+        js("document.activeElement.blur();window.reply={revision:'placeholder',data:structuredClone(COPA_DATA)};document.querySelector('#refresh-now').click()")
+        time.sleep(.2)
+        assert js("document.querySelector('#history-player').value==='' && !document.querySelector('#statistics-player .statistics-card')")
 
         # Reuse the fictitious page to cover empty, pending and completed championships.
         import copy

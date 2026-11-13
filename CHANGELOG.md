@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.81 - 13/11/2026
+
+- Estatísticas abre com Selecione um botonista, sem destacar automaticamente um participante. Números gerais continuam visíveis; desempenho, evolução e comparação dependem da escolha. Atualização automática preserva a seleção vazia.
+
 ## 1.80 - 13/11/2026
 
 - Aba Estatísticas preserva a evolução e comparação com até três outros jogadores; links antigos de evolução continuam funcionando.
