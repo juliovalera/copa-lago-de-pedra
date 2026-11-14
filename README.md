@@ -315,3 +315,7 @@ A nomenclatura **abandono** usa como referência os arts. 21 e 22 (p. 15) do [re
 ### Estatísticas
 
 A aba pública Estatísticas reúne desempenho individual, comparação e evolução, além de curiosidades da Copa. As contas usam os resultados ativos do mesmo conjunto público, ignorando pendentes e confrontos excluídos. Médias trazem o tamanho da amostra; marcas empatadas são apresentadas juntas. Não infere sequências cronológicas de jogos sem horário. As atualizações automáticas recalculam os indicadores mantendo a seleção de jogadores. O endereço `#evolucao` segue compatível com `#estatisticas`.
+
+### Compartilhar jogos
+
+Na aba Jogos, o botão Compartilhar no WhatsApp prepara texto com todos os resultados dos filtros atuais, antes da paginação. Há prévia, divisão em partes e cópia com alternativa manual. A abertura do WhatsApp usa somente o texto público; o usuário escolhe o destinatário e confirma. O link final remove parâmetros da URL e aponta para a aba Jogos, sem transportar filtros. Nenhuma mensagem é enviada pelo servidor.

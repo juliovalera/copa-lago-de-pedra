@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.82 - 14/11/2026
+
+- Compartilhamento dos jogos filtrados em texto para WhatsApp, com prévia, cópia e partes para listas maiores. Inclui todas as páginas, turno/returno, resultados e datas, sem envio automático.
+- Sem alteração nos dados ou permissões; guia atualizado.
+
 ## 1.81 - 13/11/2026
 
 - Estatísticas abre com Selecione um botonista, sem destacar automaticamente um participante. Números gerais continuam visíveis; desempenho, evolução e comparação dependem da escolha. Atualização automática preserva a seleção vazia.

@@ -324,9 +324,14 @@
   };
   const gameDates = [...new Set(data.games.filter(validPlayedDate).map(g=>g.playedAt))].sort().reverse();
   $('#game-date').insertAdjacentHTML('beforeend',gameDates.map(date=>`<option value="${date}">${date.split('-').reverse().join('/')}</option>`).join(''));
+  function filteredGames() {
+    const name=$('#game-player').value, opponent=$('#game-opponent').value, round=$('#game-round').value, status=$('#game-status').value, date=$('#game-date').value;
+    return data.games.filter(g=>(!name || g.a===name || g.b===name) && (!opponent || g.a===opponent || g.b===opponent) && (!name || !opponent || name!==opponent) && (!round || g.round===Number(round)) && (!status || g.status===status) && (!date || (validPlayedDate(g) && g.playedAt===date)));
+  }
   function renderGames() {
     const name=$('#game-player').value, opponent=$('#game-opponent').value, round=$('#game-round').value, status=$('#game-status').value, date=$('#game-date').value;
-    const filtered=data.games.filter(g=>(!name || g.a===name || g.b===name) && (!opponent || g.a===opponent || g.b===opponent) && (!name || !opponent || name!==opponent) && (!round || g.round===Number(round)) && (!status || g.status===status) && (!date || (validPlayedDate(g) && g.playedAt===date)));
+    const filtered=filteredGames();
+    $('#share-games').disabled=filtered.length===0;
     const pages=Math.max(1,Math.ceil(filtered.length/pageSize));
     gamePage=Math.min(gamePage,pages);
     $('#games-count').textContent=date ? `${filtered.length} ${filtered.length === 1 ? 'jogo realizado' : 'jogos realizados'} em ${date.split('-').reverse().join('/')}${name || opponent || round || status ? ' com os filtros selecionados' : ''}` : `${filtered.length} de ${data.games.length} jogos`;
@@ -340,6 +345,55 @@
   $('#clear-games').addEventListener('click',()=>{['#game-player','#game-opponent','#game-round','#game-status','#game-date'].forEach(id=>$(id).value='');syncGamePlayers();gamePage=1;renderGames();});
   $('#games-prev').addEventListener('click',()=>{gamePage--;renderGames();$('#games-count').scrollIntoView({block:'start'});});
   $('#games-next').addEventListener('click',()=>{gamePage++;renderGames();$('#games-count').scrollIntoView({block:'start'});});
+
+  let shareParts=[], sharePart=0;
+  const shareDialog=$('#share-games-dialog');
+  // Plain names cannot introduce WhatsApp markup or extra lines.
+  const shareName=value=>String(value).replace(/[\u0000-\u001f\u007f*~_`]/g,' ').replace(/\s+/g,' ').trim();
+  function renderSharePart() {
+    const text=shareParts[sharePart];
+    $('#share-games-text').value=text;
+    $('#share-games-open').href='https://wa.me/?text='+encodeURIComponent(text);
+    $('#share-games-part').textContent=`Mensagem ${sharePart+1} de ${shareParts.length}`;
+    $('#share-games-prev').disabled=sharePart===0;
+    $('#share-games-next').disabled=sharePart===shareParts.length-1;
+    $('.share-games-parts').hidden=shareParts.length===1;
+    $('#share-games-feedback').textContent='';
+  }
+  $('#share-games').addEventListener('click',()=>{
+    const games=filteredGames();
+    if(!games.length) return;
+    const filters=[['#game-player','Botonista'],['#game-opponent','Adversário'],['#game-round','Rodada'],['#game-status','Situação'],['#game-date','Data']]
+      .filter(([id])=>$(id).value).map(([id,label])=>`${label}: ${shareName($(id).selectedOptions[0].textContent)}`);
+    const header='*Copa Lago de Pedra*\n'+(filters.length?filters.join('\n'):'Todos os jogos')+`\n${games.length} jogo(s) encontrado(s)`;
+    const publicUrl=new URL(location.href);publicUrl.search='';publicUrl.hash='jogos';
+    const footer='\n\nConfira no site: '+publicUrl.href;
+    const blocks=games.map(g=>`*${g.turn===1?'Turno':'Returno'} · Rodada ${g.round} · Jogo ${g.game}*\n${shareName(g.a)} ${g.status==='played'?`*${g.scoreA} × ${g.scoreB}*`:'×'} ${shareName(g.b)}\n${g.status==='played'?(validPlayedDate(g)?'Data: '+g.playedAt.split('-').reverse().join('/'):'Data não informada'):'Resultado ainda não informado'}`);
+    const groups=[];let current=[];let length=header.length+footer.length+40;
+    for(const block of blocks) {
+      if(current.length && length+block.length+2>1500) {groups.push(current);current=[];length=header.length+footer.length+40;}
+      current.push(block);length+=block.length+2;
+    }
+    if(current.length) groups.push(current);
+    shareParts=groups.map((group,i)=>header+(groups.length>1?`\n*Parte ${i+1} de ${groups.length}*`:'')+'\n\n'+group.join('\n\n')+footer);
+    sharePart=0;
+    $('#share-games-summary').textContent=groups.length>1?`${games.length} jogos divididos em ${groups.length} mensagens. Envie ou copie uma parte por vez usando Anterior e Próxima.`:`${games.length} jogo(s) em uma mensagem.`;
+    renderSharePart();shareDialog.showModal();shareDialog.scrollTop=0;
+  });
+  $('#share-games-prev').addEventListener('click',()=>{if(sharePart>0){sharePart--;renderSharePart();}});
+  $('#share-games-next').addEventListener('click',()=>{if(sharePart<shareParts.length-1){sharePart++;renderSharePart();}});
+  $('#share-games-close').addEventListener('click',()=>shareDialog.close());
+  shareDialog.addEventListener('close',()=>$('#share-games').focus());
+  $('#share-games-copy').addEventListener('click',async()=>{
+    try {
+      await navigator.clipboard.writeText($('#share-games-text').value);
+      $('#share-games-feedback').textContent='Mensagem copiada. Cole na conversa do WhatsApp.';
+    } catch {
+      $('#share-games-text').focus();$('#share-games-text').select();
+      $('#share-games-feedback').textContent='Selecione e copie o texto da prévia para colar no WhatsApp.';
+    }
+  });
+
   renderGames();
   if (window.COPA_SUMULA_LOGIN) {
     const sumulaDialog = $('#sumula-login-dialog');
