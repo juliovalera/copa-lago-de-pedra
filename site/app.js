@@ -418,6 +418,61 @@
     $('#share-games-summary').textContent=`${games.length} partida(s) pendente(s). ${shareParts.length} mensagem(ns) para copiar ou enviar.`;
     renderSharePart();shareDialog.showModal();shareDialog.scrollTop=0;
   }
+  const meetingDialog=$('#meeting-dialog');
+  function meetingSelection() {
+    const ids=new Set([...document.querySelectorAll('#meeting-players input:checked')].map(input=>input.value));
+    const selected=players.filter(p=>ids.has(String(p.id)));
+    const names=new Set(selected.map(p=>p.name));
+    const turn=$('#meeting-turn').value;
+    const games=data.games.filter(g=>g.status==='pending' && names.has(g.a) && names.has(g.b) && (!turn || String(g.turn)===turn))
+      .sort((a,b)=>Number(a.turn)-Number(b.turn) || a.round-b.round || a.game-b.game);
+    return {selected,games};
+  }
+  const meetingTurn=turn=>Number(turn)===1?'1\u00ba turno':'2\u00ba turno \u2014 returno';
+  function renderMeeting() {
+    const {selected,games}=meetingSelection();
+    $('#meeting-summary').textContent=selected.length<2?'Selecione pelo menos dois participantes.':`${selected.length} participantes \u00b7 ${games.length} partidas pendentes entre eles.`;
+    $('#meeting-counts').innerHTML=selected.length<2?'':selected.map(p=>`<li>${escape(p.name)}: ${games.filter(g=>g.a===p.name || g.b===p.name).length} partida(s)</li>`).join('');
+    $('#meeting-games').innerHTML=games.map(g=>`<li><strong>${escape(g.a)} \u00d7 ${escape(g.b)}</strong><br>${meetingTurn(g.turn)} \u00b7 Rodada ${g.round}</li>`).join('');
+    $('#meeting-share').disabled=games.length===0;
+  }
+  $('#organize-meeting').addEventListener('click',()=>{
+    $('#meeting-form').reset();
+    $('#meeting-players').innerHTML=[...players].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<label><input type="checkbox" value="${escape(p.id)}"> <span>${escape(p.name)}</span></label>`).join('');
+    renderMeeting();meetingDialog.showModal();meetingDialog.scrollTop=0;
+  });
+  $('#meeting-form').addEventListener('submit',event=>event.preventDefault());
+  $('#meeting-form').addEventListener('change',renderMeeting);
+  $('#meeting-close').addEventListener('click',()=>meetingDialog.close());
+  meetingDialog.addEventListener('close',()=>{
+    $('#meeting-form').reset();$('#meeting-players').replaceChildren();$('#meeting-games').replaceChildren();$('#meeting-counts').replaceChildren();$('#meeting-summary').textContent='';
+    if(shareReturnFocus?.id==='meeting-share') {shareParts=[];$('#share-games-text').value='';$('#share-games-open').removeAttribute('href');}
+    $('#organize-meeting').focus();
+  });
+  $('#meeting-share').addEventListener('click',()=>{
+    if(!$('#meeting-form').reportValidity()) return;
+    const {selected,games}=meetingSelection();if(!games.length)return;
+    const details=[];
+    if($('#meeting-date').value) details.push('Data: '+formatGameDate($('#meeting-date').value));
+    if($('#meeting-time').value) details.push('Hor\u00e1rio: '+$('#meeting-time').value);
+    if($('#meeting-location').value.trim()) details.push('Local: '+shareName($('#meeting-location').value));
+    const header='*Vamos jogar! \u2014 Copa Lago de Pedra*\n'+details.join('\n');
+    const blocks=['*Participantes:*',...selected.map(p=>'\u2022 '+shareName(p.name)),'*Confrontos poss\u00edveis:*',...games.map(g=>`${shareName(g.a)} \u00d7 ${shareName(g.b)} \u2014 ${meetingTurn(g.turn)}`)];
+    const url=new URL(location.href);url.search='';url.hash='jogos';
+    const footer=`\n\n${games.length} partidas pendentes entre os participantes.\n_Simula\u00e7\u00e3o baseada nos jogos sem resultado registrado. Se j\u00e1 jogou, avise para conferirmos._\n${url.href}`;
+    const groups=[];let lines=[];let length=header.length+footer.length+40;
+    for(const block of blocks) {
+      if(lines.length && length+block.length+1>1500) {groups.push(lines);lines=[];length=header.length+footer.length+40;}
+      lines.push(block);length+=block.length+1;
+    }
+    if(lines.length)groups.push(lines);
+    shareParts=groups.map((group,i)=>header+(groups.length>1?`\n*Parte ${i+1} de ${groups.length}*`:'')+'\n\n'+group.join('\n')+footer);
+    sharePart=0;shareReturnFocus=$('#meeting-share');
+    $('#share-games-title').textContent='Compartilhar encontro';
+    $('#share-games-help').textContent='Confira a simula\u00e7\u00e3o. Escolha o contato ou grupo e confirme o envio no WhatsApp. Nenhum encontro ser\u00e1 salvo no site.';
+    $('#share-games-summary').textContent=`${games.length} partidas em ${groups.length} mensagem(ns). Se houver partes, use Anterior e Pr\u00f3xima para enviar cada uma.`;
+    renderSharePart();shareDialog.showModal();shareDialog.scrollTop=0;
+  });
   $('#share-games-prev').addEventListener('click',()=>{if(sharePart>0){sharePart--;renderSharePart();}});
   $('#share-games-next').addEventListener('click',()=>{if(sharePart<shareParts.length-1){sharePart++;renderSharePart();}});
   $('#share-games-close').addEventListener('click',()=>shareDialog.close());

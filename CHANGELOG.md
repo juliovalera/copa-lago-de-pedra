@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.84 - 16/11/2026
+
+- Organizar encontro: simula confrontos pendentes entre participantes selecionados por turno, mostra partidas por pessoa e prepara mensagem para WhatsApp. Data, horário e local opcionais; nada é salvo e as escolhas são descartadas ao fechar.
+
 ## 1.83 - 16/11/2026
 
 - Compartilhamento de Quem falta enfrentar? no WhatsApp, respeitando turno/returno, com prévia e cópia da lista de adversários.
