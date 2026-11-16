@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.85 - 16/11/2026
+
+- Filtro de turno na área pública e no painel, com rodadas correspondentes, compartilhamento e preservação ao salvar resultados e voltar dos anexos.
+
 ## 1.84 - 16/11/2026
 
 - Organizar encontro: simula confrontos pendentes entre participantes selecionados por turno, mostra partidas por pessoa e prepara mensagem para WhatsApp. Data, horário e local opcionais; nada é salvo e as escolhas são descartadas ao fechar.

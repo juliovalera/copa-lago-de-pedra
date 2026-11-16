@@ -323,3 +323,5 @@ Na aba Jogos, o botão Compartilhar no WhatsApp prepara texto com todos os resul
 Em **Quem falta enfrentar?**, o compartilhamento usa as partidas pendentes do jogador e o turno selecionado. Todos separa os adversários por turno. A prévia permite copiar ou abrir o WhatsApp, sem envio automático.
 
 **Organizar encontro** (aba Jogos) cruza participantes ativos e partidas pendentes por turno, sem depender dos filtros da listagem. A simulação ocorre apenas no navegador, não usa armazenamento persistente nem grava no banco e é descartada ao fechar. Permite campos opcionais de data, horário e local, contagem por participante e prévia de texto para WhatsApp em partes.
+
+O filtro Turno funciona na consulta pública e administrativa, limita as opções de rodada e é preservado na paginação, no salvamento e no retorno dos anexos. O compartilhamento de jogos respeita esse filtro.

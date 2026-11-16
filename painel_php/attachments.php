@@ -11,6 +11,11 @@ function panelReturnUrl(): string
         $value = filter_input(INPUT_GET, $key, FILTER_VALIDATE_INT);
         if ($value && $value > 0) $params[$key] = $value;
     }
+    $turn = in_array($_GET['turn'] ?? '', ['1', '2'], true) ? (int)$_GET['turn'] : 0;
+    if ($turn) {
+        $params['turn'] = $turn;
+        if (!empty($params['round']) && ($params['round'] <= 25 ? 1 : 2) !== $turn) unset($params['round']);
+    }
     foreach (['status' => ['played', 'pending'], 'attachment' => ['with', 'without']] as $key => $allowed) {
         if (in_array($_GET[$key] ?? '', $allowed, true)) $params[$key] = $_GET[$key];
     }

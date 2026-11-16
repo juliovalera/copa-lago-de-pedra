@@ -17,6 +17,16 @@
     });
     validateDate();
   });
+  const turn = document.querySelector('#turn');
+  const round = document.querySelector('#round');
+  if (turn && round) {
+    const syncRounds = () => {
+      for (const option of round.options) option.hidden = option.disabled = !!option.value && !!turn.value && (Number(option.value) <= 25 ? 1 : 2) !== Number(turn.value);
+      if (round.selectedOptions[0]?.disabled) round.value = '';
+    };
+    turn.addEventListener('change', syncRounds);
+    syncRounds();
+  }
   const player = document.querySelector('#player');
   const opponent = document.querySelector('#opponent');
   if (!player || !opponent) return;
