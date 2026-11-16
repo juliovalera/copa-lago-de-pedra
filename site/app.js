@@ -426,6 +426,13 @@
     renderSharePart();shareDialog.showModal();shareDialog.scrollTop=0;
   }
   const meetingDialog=$('#meeting-dialog');
+  let meetingPdfUrl=null, meetingPdfRevision=0, meetingPdfBusy=false;
+  function clearMeetingPdf() {
+    meetingPdfRevision++;
+    if(meetingPdfUrl) URL.revokeObjectURL(meetingPdfUrl);
+    meetingPdfUrl=null;$('#meeting-pdf-ready').hidden=true;$('#meeting-pdf-status').textContent='';
+    $('#meeting-pdf-download').removeAttribute('href');$('#meeting-pdf-print').removeAttribute('href');
+  }
   function meetingSelection() {
     const ids=new Set([...document.querySelectorAll('#meeting-players input:checked')].map(input=>input.value));
     const selected=players.filter(p=>ids.has(String(p.id)));
@@ -442,6 +449,7 @@
     $('#meeting-counts').innerHTML=selected.length<2?'':selected.map(p=>`<li>${escape(p.name)}: ${games.filter(g=>g.a===p.name || g.b===p.name).length} partida(s)</li>`).join('');
     $('#meeting-games').innerHTML=games.map(g=>`<li><strong>${escape(g.a)} \u00d7 ${escape(g.b)}</strong><br>${meetingTurn(g.turn)} \u00b7 Rodada ${g.round}</li>`).join('');
     $('#meeting-share').disabled=games.length===0;
+    $('#meeting-pdf').disabled=games.length===0 || meetingPdfBusy;
   }
   $('#organize-meeting').addEventListener('click',()=>{
     $('#meeting-form').reset();
@@ -449,12 +457,35 @@
     renderMeeting();meetingDialog.showModal();meetingDialog.scrollTop=0;
   });
   $('#meeting-form').addEventListener('submit',event=>event.preventDefault());
-  $('#meeting-form').addEventListener('change',renderMeeting);
+  $('#meeting-form').addEventListener('input',()=>{clearMeetingPdf();renderMeeting();});
+  $('#meeting-form').addEventListener('change',()=>{clearMeetingPdf();renderMeeting();});
   $('#meeting-close').addEventListener('click',()=>meetingDialog.close());
   meetingDialog.addEventListener('close',()=>{
+    clearMeetingPdf();
     $('#meeting-form').reset();$('#meeting-players').replaceChildren();$('#meeting-games').replaceChildren();$('#meeting-counts').replaceChildren();$('#meeting-summary').textContent='';
     if(shareReturnFocus?.id==='meeting-share') {shareParts=[];$('#share-games-text').value='';$('#share-games-open').removeAttribute('href');}
     $('#organize-meeting').focus();
+  });
+  $('#meeting-pdf').addEventListener('click',async()=>{
+    if(meetingPdfBusy || !$('#meeting-form').reportValidity()) return;
+    const {selected,games}=meetingSelection();if(!games.length)return;
+    clearMeetingPdf();const revision=meetingPdfRevision;
+    const details=[];
+    if($('#meeting-date').value)details.push('Data: '+formatGameDate($('#meeting-date').value));
+    if($('#meeting-time').value)details.push('Horário: '+$('#meeting-time').value);
+    if($('#meeting-location').value.trim())details.push('Local: '+$('#meeting-location').value.trim());
+    const report={players:selected.map(p=>({name:p.name})),games:games.map(g=>({...g})),details,turn:$('#meeting-turn').selectedOptions[0].textContent,generated:new Date().toLocaleString('pt-BR')};
+    meetingPdfBusy=true;renderMeeting();$('#meeting-pdf-status').textContent='Preparando o relatório. Aguarde...';
+    try {
+      const blob=await window.copaMeetingPdf(report);
+      if(revision!==meetingPdfRevision || !meetingDialog.open)return;
+      meetingPdfUrl=URL.createObjectURL(blob);
+      const link=$('#meeting-pdf-download');link.href=meetingPdfUrl;link.download='encontro-copa-lago-de-pedra.pdf';
+      $('#meeting-pdf-print').href=meetingPdfUrl;$('#meeting-pdf-ready').hidden=false;
+      $('#meeting-pdf-status').textContent='PDF preparado. Se o download não iniciar, toque em Salvar PDF preparado.';link.click();
+    } catch {
+      if(revision===meetingPdfRevision && meetingDialog.open)$('#meeting-pdf-status').textContent='Não foi possível gerar o PDF. Confira sua conexão e tente novamente. Sua seleção foi mantida.';
+    } finally {meetingPdfBusy=false;if(meetingDialog.open)renderMeeting();}
   });
   $('#meeting-share').addEventListener('click',()=>{
     if(!$('#meeting-form').reportValidity()) return;

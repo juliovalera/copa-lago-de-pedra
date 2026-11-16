@@ -9,12 +9,16 @@ import subprocess
 import tempfile
 import threading
 import time
+import sys
+import fitz
 from urllib.request import urlopen
 from websockets.sync.client import connect
 
 ROOT=Path(__file__).resolve().parents[1]
 class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
+        if self.path.startswith('/site/vendor/'):
+            self.path=self.path.replace('/site/vendor/','/painel_php/public/vendor/',1)
         if self.path.startswith('/previews/vendor/'):
             self.path=self.path.replace('/previews/vendor/','/painel_php/public/vendor/',1)
         return super().do_GET()
@@ -55,7 +59,7 @@ try:
         html=re.sub(r'<script src="data\.js[^"]*" defer></script>', lambda m: '<script>window.COPA_DATA='+json.dumps(fixture).replace('<',r'\u003c')+';</script>',html)
         html=html.replace('<head>','<head><base href="/site/">')
         html=html.replace('<p id="import-date"></p>', '<div class="public-freshness"><p id="import-date"></p><div id="public-refresh" data-endpoint="data.php?format=json"><span id="refresh-status"></span><button id="refresh-now">Atualizar</button></div></div>')
-        html=html.replace('<head>', '<head><script>window.refreshCalls=0;window.reply={revision:"initial",data:null};window.fetch=async()=>{refreshCalls++;return {ok:true,json:async()=>reply}};const realInterval=window.setInterval;window.setInterval=(fn,ms)=>{if(ms===60000)window.refreshTick=fn;return realInterval(fn,ms)};</script>')
+        html=html.replace('<head>', '<head><script>window.nativeFetch=window.fetch;window.refreshCalls=0;window.reply={revision:"initial",data:null};window.fetch=async()=>{refreshCalls++;return {ok:true,json:async()=>reply}};const realInterval=window.setInterval;window.setInterval=(fn,ms)=>{if(ms===60000)window.refreshTick=fn;return realInterval(fn,ms)};</script>')
         (ROOT/'previews/history.html').write_text(html,encoding='utf-8')
         call('Page.navigate',dict(url=base+'/previews/history.html#evolucao'))
         time.sleep(.6)
@@ -213,6 +217,46 @@ try:
         for width in [320,390,768,1280]:
             call('Emulation.setDeviceMetricsOverride',dict(width=width,height=900,deviceScaleFactor=1,mobile=False))
             assert js("document.querySelector('#meeting-dialog').scrollWidth<=document.querySelector('#meeting-dialog').clientWidth"),width
+        if '--meeting-pdf' in sys.argv:
+            js("window.stubFetch=window.fetch;window.fetch=window.nativeFetch;new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='/painel_php/public/export.js';s.onload=resolve;s.onerror=reject;document.head.append(s)})")
+            js("const pdfOriginal=window.copaMeetingPdf;window.copaMeetingPdf=async r=>{try{return await pdfOriginal(r)}catch(e){window.pdfTestError=e.stack;throw e}}")
+            js("document.querySelector('#meeting-date').value='2026-11-20';document.querySelector('#meeting-time').value='14:30';document.querySelector('#meeting-pdf').click()")
+            for _ in range(120):
+                if not js("document.querySelector('#meeting-pdf').disabled"):break
+                time.sleep(.2)
+            assert js("!document.querySelector('#meeting-pdf-ready').hidden"),js("document.querySelector('#meeting-pdf-status').textContent+window.pdfTestError")
+            encoded=js("(async()=>{const b=await(await fetch(document.querySelector('#meeting-pdf-download').href)).blob();return await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result.split(',')[1]);r.readAsDataURL(b)})})()")
+            raw=base64.b64decode(encoded);(ROOT/'previews/meeting.pdf').write_bytes(raw)
+            with fitz.open(stream=raw,filetype='pdf') as pdf:
+                text='\n'.join(page.get_text() for page in pdf)
+                assert len(pdf)==3 and 'Clube <Teste>' in text and '20/11/2026' in text and '14:30' in text
+                assert 'Ana <Teste>' in text and 'Daniel' not in text
+                for page in pdf:
+                    assert len(page.get_images())>=2
+                    assert 'I COPA LAGO DE PEDRA' in page.get_text()
+                    page.get_pixmap(matrix=fitz.Matrix(1.2,1.2)).save(str(ROOT/f'previews/meeting-{page.number+1}.png'))
+            js("document.querySelector('#meeting-location').value='Outro local';document.querySelector('#meeting-location').dispatchEvent(new Event('input',{bubbles:true}))")
+            assert js("document.querySelector('#meeting-pdf-ready').hidden && !document.querySelector('#meeting-pdf-download').hasAttribute('href')")
+            # Load failure keeps selections and allows retry.
+            js("window.realMeetingPdf=window.copaMeetingPdf;window.copaMeetingPdf=async()=>{throw Error('offline')};document.querySelector('#meeting-pdf').click()")
+            time.sleep(.1)
+            assert js("!document.querySelector('#meeting-pdf').disabled && document.querySelector('#meeting-pdf-ready').hidden && document.querySelector('#meeting-pdf-status').textContent.includes('mantida')")
+            js("window.copaMeetingPdf=window.realMeetingPdf")
+            encoded=js("(async()=>{const report={players:[{name:'Participante com nome bastante comprido para conferir a quebra de linhas'},{name:'Outro participante'}],games:Array.from({length:60},(_,i)=>({turn:i<30?1:2,round:i+1,a:'Participante com nome bastante comprido para conferir a quebra de linhas',b:'Outro participante'})),details:[],turn:'Ambos os turnos',generated:'16/11/2026 12:00'};const b=await copaMeetingPdf(report);return await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result.split(',')[1]);r.readAsDataURL(b)})})()")
+            with fitz.open(stream=base64.b64decode(encoded),filetype='pdf') as pdf:
+                text='\n'.join(page.get_text() for page in pdf)
+                assert text.count('Outro participante')==61
+                for page in pdf:
+                    assert len(page.get_images())>=2 and 'Gerado em' in page.get_text()
+                    for block in page.get_text('dict')['blocks']:
+                        if block['type']!=0:continue
+                        for line in block['lines']:
+                            for span in line['spans']:
+                                x0,y0,x1,y1=span['bbox']
+                                assert x0>=30 and x1<=page.rect.width-30 and y0>=15 and y1<page.rect.height-15,(page.number,span)
+                    if page.number==2:page.get_pixmap().save(str(ROOT/'previews/meeting-long.png'))
+            js("window.fetch=window.stubFetch")
+            print('OK: encounter PDF with logos, all selected matches, turns, optional details, three pages, invalidation and retry')
         js("document.querySelector('#meeting-close').click()")
         time.sleep(.1)
         js("document.querySelector('#organize-meeting').click()")

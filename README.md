@@ -325,3 +325,5 @@ Em **Quem falta enfrentar?**, o compartilhamento usa as partidas pendentes do jo
 **Organizar encontro** (aba Jogos) cruza participantes ativos e partidas pendentes por turno, sem depender dos filtros da listagem. A simulação ocorre apenas no navegador, não usa armazenamento persistente nem grava no banco e é descartada ao fechar. Permite campos opcionais de data, horário e local, contagem por participante e prévia de texto para WhatsApp em partes.
 
 O filtro Turno funciona na consulta pública e administrativa, limita as opções de rodada e é preservado na paginação, no salvamento e no retorno dos anexos. O compartilhamento de jogos respeita esse filtro.
+
+O encontro oferece relatório PDF local via pdfmake, com logos incorporados, fontes de 14 pontos, tabelas por turno e paginação. O arquivo pode ser baixado ou aberto para imprimir. Mudanças e fechamento revogam a URL temporária; gerações anteriores em andamento são descartadas. Nenhum dado da simulação é enviado ao servidor.

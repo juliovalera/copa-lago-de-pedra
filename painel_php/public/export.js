@@ -25,6 +25,33 @@
     })().catch(error => { pdfLibrary = null; throw error; });
     return pdfLibrary;
   }
+  // The encounter snapshot stays in memory; only local logos/fonts are loaded.
+  window.copaMeetingPdf = async report => {
+    await loadPdf();
+    const logos=await Promise.all(['.header-logo img','.league-logo'].map(async selector=>{
+      const response=await fetch(document.querySelector(selector).src);
+      if(!response.ok) throw new Error('Logo indisponivel');
+      const blob=await response.blob();
+      return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);});
+    }));
+    const green='#123e32';
+    const table=(headers,rows,widths)=>({table:{headerRows:1,keepWithHeaderRows:1,dontBreakRows:true,widths,body:[headers.map(text=>({text,bold:true,color:'white',fillColor:green})),...rows.map((row,i)=>row.map(text=>({text:String(text),fillColor:i%2?'#ffffff':'#eff4ed'})))]},layout:{hLineWidth:()=>0.5,vLineWidth:()=>0,hLineColor:()=>'#c6d2c7',paddingTop:()=>8,paddingBottom:()=>8,paddingLeft:()=>7,paddingRight:()=>7},margin:[0,0,0,16]});
+    const content=[{text:'Organizar encontro',fontSize:22,bold:true,margin:[0,0,0,10]},
+      {text:report.turn,fontSize:16,bold:true,margin:[0,0,0,8]},
+      {text:report.details.join('  |  ') || 'Data, horário e local a combinar.',margin:[0,0,0,10]},
+      {text:`${report.players.length} participantes - ${report.games.length} partidas pendentes`,bold:true,margin:[0,0,0,12]},
+      {text:'Simulação de confrontos sem resultado registrado. Não agenda partidas nem altera resultados. Se um jogo já aconteceu, confira se o placar foi informado.',fontSize:12,margin:[0,0,0,16]},
+      {text:'Participantes',fontSize:18,bold:true,margin:[0,0,0,8]},
+      table(['Botonista','Partidas'],report.players.map(p=>[p.name,report.games.filter(g=>g.a===p.name||g.b===p.name).length]),['*',70])];
+    for(const turn of [1,2]) {
+      const games=report.games.filter(g=>Number(g.turn)===turn);if(!games.length)continue;
+      content.push({text:turn===1?'Confrontos - 1º turno':'Confrontos - 2º turno (returno)',fontSize:18,bold:true,margin:[0,8,0,12],pageBreak:'before'});
+      content.push(table(['Rodada','Jogador A','Jogador B'],games.map(g=>[g.round,g.a,g.b]),[55,'*','*']));
+    }
+    return pdfMake.createPdf({info:{title:'Copa Lago de Pedra - Encontro',creator:'Copa Lago de Pedra'},images:{copa:logos[0],liga:logos[1]},pageSize:'A4',pageMargins:[36,112,36,54],defaultStyle:{font:'Roboto',fontSize:14,color:green,lineHeight:1.15},
+      header:()=>({margin:[36,18,36,0],columns:[{image:'copa',fit:[65,70],width:75},{width:'*',stack:[{text:'I COPA LAGO DE PEDRA',alignment:'center',bold:true,fontSize:16,margin:[0,10,0,6]},{text:'Futebol de Botão | Planejamento de encontro',alignment:'center',fontSize:11}]},{image:'liga',fit:[60,70],width:60}]}),
+      footer:(page,pages)=>({margin:[36,12,36,0],columns:[{text:'Gerado em '+report.generated,fontSize:10},{text:`Página ${page} de ${pages}`,alignment:'right',fontSize:10}]}),content}).getBlob();
+  };
   function pdfDefinition(report) {
     const green = '#173e33';
     const content = [];

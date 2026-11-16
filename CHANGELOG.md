@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.86 - 16/11/2026
+
+- Relatório PDF do encontro, com logos, participantes, partidas por pessoa, confrontos separados por turno, fonte ampliada e páginas numeradas. Download e abertura para impressão sem gravar a simulação no servidor.
+
 ## 1.85 - 16/11/2026
 
 - Filtro de turno na área pública e no painel, com rodadas correspondentes, compartilhamento e preservação ao salvar resultados e voltar dos anexos.
