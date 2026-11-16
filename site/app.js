@@ -143,10 +143,13 @@
     $('#profile-history').addEventListener('click', () => { $('#history-player').value = p.id; renderHistory(); $('#player-dialog').close(); location.hash = 'evolucao'; });
   }
   function renderPendingOpponents(p) {
-    $('#player-content').innerHTML = `<h2 id="player-title">Quem falta enfrentar?</h2><p class="pending-player">${escape(p.name)}</p><p>Esta lista considera partidas sem resultado registrado. Se você já jogou, confira se o placar foi informado.</p><div class="pending-turns" role="group" aria-label="Filtrar por turno"><button class="secondary" data-pending-turn="" aria-pressed="true">Todos</button><button class="secondary" data-pending-turn="1" aria-pressed="false">1º turno</button><button class="secondary" data-pending-turn="2" aria-pressed="false">2º turno — returno</button></div><p id="pending-summary" role="status" aria-live="polite"></p><ul id="pending-opponents" class="pending-opponents"></ul><button class="secondary" id="pending-back">Voltar ao perfil</button>`;
+    $('#player-content').innerHTML = `<h2 id="player-title">Quem falta enfrentar?</h2><p class="pending-player">${escape(p.name)}</p><p>Esta lista considera partidas sem resultado registrado. Se você já jogou, confira se o placar foi informado.</p><div class="pending-turns" role="group" aria-label="Filtrar por turno"><button class="secondary" data-pending-turn="" aria-pressed="true">Todos</button><button class="secondary" data-pending-turn="1" aria-pressed="false">1º turno</button><button class="secondary" data-pending-turn="2" aria-pressed="false">2º turno — returno</button></div><p id="pending-summary" role="status" aria-live="polite"></p><ul id="pending-opponents" class="pending-opponents"></ul><button class="secondary" id="share-pending">Compartilhar no WhatsApp</button><button class="secondary" id="pending-back">Voltar ao perfil</button>`;
     const pending = data.games.filter(g => g.status === 'pending' && (g.a === p.name || g.b === p.name));
+    let selectedTurn='';
     const render = turn => {
+      selectedTurn=turn;
       const games = pending.filter(g => !turn || String(g.turn) === turn);
+      $('#share-pending').disabled=games.length===0;
       const opponents = new Map();
       for (const game of games) {
         const name = game.a === p.name ? game.b : game.a;
@@ -160,6 +163,7 @@
       document.querySelectorAll('[data-pending-turn]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.pendingTurn === turn)));
     };
     document.querySelectorAll('[data-pending-turn]').forEach(button=>button.addEventListener('click',()=>render(button.dataset.pendingTurn)));
+    $('#share-pending').addEventListener('click',()=>sharePendingOpponents(p,pending,selectedTurn));
     $('#pending-back').addEventListener('click',()=>{renderProfile(p);$('#profile-pending').focus();});
     render('');
     $('#player-dialog').scrollTop = 0;
@@ -346,7 +350,7 @@
   $('#games-prev').addEventListener('click',()=>{gamePage--;renderGames();$('#games-count').scrollIntoView({block:'start'});});
   $('#games-next').addEventListener('click',()=>{gamePage++;renderGames();$('#games-count').scrollIntoView({block:'start'});});
 
-  let shareParts=[], sharePart=0;
+  let shareParts=[], sharePart=0, shareReturnFocus=null;
   const shareDialog=$('#share-games-dialog');
   // Plain names cannot introduce WhatsApp markup or extra lines.
   const shareName=value=>String(value).replace(/[\u0000-\u001f\u007f*~_`]/g,' ').replace(/\s+/g,' ').trim();
@@ -363,6 +367,9 @@
   $('#share-games').addEventListener('click',()=>{
     const games=filteredGames();
     if(!games.length) return;
+    shareReturnFocus=$('#share-games');
+    $('#share-games-title').textContent='Compartilhar jogos';
+    $('#share-games-help').textContent='A mensagem inclui todos os jogos encontrados, mesmo os de outras páginas. Confira a prévia. Você escolhe o contato ou grupo e confirma o envio no WhatsApp.';
     const filters=[['#game-player','Botonista'],['#game-opponent','Adversário'],['#game-round','Rodada'],['#game-status','Situação'],['#game-date','Data']]
       .filter(([id])=>$(id).value).map(([id,label])=>`${label}: ${shareName($(id).selectedOptions[0].textContent)}`);
     const header='*Copa Lago de Pedra*\n'+(filters.length?filters.join('\n'):'Todos os jogos')+`\n${games.length} jogo(s) encontrado(s)`;
@@ -380,10 +387,41 @@
     $('#share-games-summary').textContent=groups.length>1?`${games.length} jogos divididos em ${groups.length} mensagens. Envie ou copie uma parte por vez usando Anterior e Próxima.`:`${games.length} jogo(s) em uma mensagem.`;
     renderSharePart();shareDialog.showModal();shareDialog.scrollTop=0;
   });
+  function sharePendingOpponents(player,pending,turn) {
+    const games=pending.filter(g=>!turn || String(g.turn)===turn);
+    if(!games.length) return;
+    const header=`*Jogos que faltam \u2014 ${shareName(player.name)}*`;
+    const publicUrl=new URL(location.href);publicUrl.search='';publicUrl.hash='jogos';
+    const footer='\n\nQuem estiver dispon\u00edvel, vamos combinar! \ud83e\udd1d\n\n_Lista baseada nos jogos sem resultado registrado no site._\n'+publicUrl.href;
+    shareParts=[];
+    for(const t of [1,2]) {
+      const names=[...new Set(games.filter(g=>Number(g.turn)===t).map(g=>g.a===player.name?g.b:g.a))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+      if(!names.length) continue;
+      const title=`*${t===1?'1\u00ba turno':'2\u00ba turno \u2014 returno'}*`;
+      let lines=[];
+      for(const name of names) {
+        const line='\u2022 '+shareName(name);
+        if(lines.length && (header+title+lines.join('\n')+line+footer).length>1400) {
+          shareParts.push(header+'\n'+title+'\n\n'+lines.join('\n')+footer);lines=[];
+        }
+        lines.push(line);
+      }
+      shareParts.push(header+'\n'+title+'\n\n'+lines.join('\n')+footer);
+    }
+    // Combine both turns when the complete list fits in one message.
+    if(shareParts.length===2 && (shareParts[0]+shareParts[1]).length<1500) {
+      shareParts=[shareParts[0].slice(0,-footer.length)+'\n\n'+shareParts[1].slice(header.length+1)];
+    }
+    shareReturnFocus=$('#share-pending');sharePart=0;
+    $('#share-games-title').textContent='Compartilhar quem falta enfrentar';
+    $('#share-games-help').textContent='A lista respeita o turno escolhido. Confira a pr\u00e9via, escolha o contato ou grupo no WhatsApp e confirme o envio.';
+    $('#share-games-summary').textContent=`${games.length} partida(s) pendente(s). ${shareParts.length} mensagem(ns) para copiar ou enviar.`;
+    renderSharePart();shareDialog.showModal();shareDialog.scrollTop=0;
+  }
   $('#share-games-prev').addEventListener('click',()=>{if(sharePart>0){sharePart--;renderSharePart();}});
   $('#share-games-next').addEventListener('click',()=>{if(sharePart<shareParts.length-1){sharePart++;renderSharePart();}});
   $('#share-games-close').addEventListener('click',()=>shareDialog.close());
-  shareDialog.addEventListener('close',()=>$('#share-games').focus());
+  shareDialog.addEventListener('close',()=>shareReturnFocus?.focus());
   $('#share-games-copy').addEventListener('click',async()=>{
     try {
       await navigator.clipboard.writeText($('#share-games-text').value);

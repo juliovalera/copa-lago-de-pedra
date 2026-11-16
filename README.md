@@ -319,3 +319,5 @@ A aba pública Estatísticas reúne desempenho individual, comparação e evolu�
 ### Compartilhar jogos
 
 Na aba Jogos, o botão Compartilhar no WhatsApp prepara texto com todos os resultados dos filtros atuais, antes da paginação. Há prévia, divisão em partes e cópia com alternativa manual. A abertura do WhatsApp usa somente o texto público; o usuário escolhe o destinatário e confirma. O link final remove parâmetros da URL e aponta para a aba Jogos, sem transportar filtros. Nenhuma mensagem é enviada pelo servidor.
+
+Em **Quem falta enfrentar?**, o compartilhamento usa as partidas pendentes do jogador e o turno selecionado. Todos separa os adversários por turno. A prévia permite copiar ou abrir o WhatsApp, sem envio automático.

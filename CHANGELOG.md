@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.83 - 16/11/2026
+
+- Compartilhamento de Quem falta enfrentar? no WhatsApp, respeitando turno/returno, com prévia e cópia da lista de adversários.
+
 ## 1.82 - 14/11/2026
 
 - Compartilhamento dos jogos filtrados em texto para WhatsApp, com prévia, cópia e partes para listas maiores. Inclui todas as páginas, turno/returno, resultados e datas, sem envio automático.

@@ -197,6 +197,23 @@ try:
         assert js("document.querySelector('#pending-summary').textContent.includes('1 partida contra 1') && document.querySelectorAll('#pending-opponents li').length===1")
         js("document.querySelector('[data-pending-turn=\"2\"]').click()")
         assert js("document.querySelector('#pending-summary').textContent.includes('2 partidas contra 2')")
+        js("document.querySelector('#share-pending').click()")
+        assert js("document.querySelector('#share-games-text').value.includes('2\u00ba turno') && !document.querySelector('#share-games-text').value.includes('1\u00ba turno')")
+        assert js("document.querySelector('#share-games-text').value.includes('Bruno') && document.querySelector('#share-games-text').value.includes('Carla') && !document.querySelector('#share-games-text').value.includes('Daniel')")
+        assert js("document.querySelector('#player-dialog').open && document.querySelector('#share-games-dialog').open")
+        assert js("new URL(document.querySelector('#share-games-open').href).searchParams.get('text')===document.querySelector('#share-games-text').value")
+        js("document.querySelector('#share-games-close').click()")
+        time.sleep(.1)
+        assert js("document.activeElement.id==='share-pending'"), js("document.activeElement.outerHTML")
+        js("document.querySelector('[data-pending-turn=\"1\"]').click();document.querySelector('#share-pending').click()")
+        assert js("document.querySelector('#share-games-text').value.includes('1\u00ba turno') && !document.querySelector('#share-games-text').value.includes('Carla')")
+        js("document.querySelector('#share-games-close').click();document.querySelector('[data-pending-turn=\"\"]').click();document.querySelector('#share-pending').click()")
+        assert js("document.querySelector('#share-games-text').value.includes('1\u00ba turno') && document.querySelector('#share-games-text').value.includes('2\u00ba turno') && document.querySelector('#share-games-text').value.includes('Ana <Teste>')")
+        assert js("document.querySelector('#share-games-text').value.split('Bruno').length===3")
+        call('Emulation.setDeviceMetricsOverride',dict(width=320,height=900,deviceScaleFactor=1,mobile=False))
+        assert js("document.querySelector('#share-games-dialog').scrollWidth<=document.querySelector('#share-games-dialog').clientWidth")
+        js("document.querySelector('#share-games-close').click()")
+        print('OK: pending WhatsApp sharing respects turns, groups all, excludes played, encodes text, preserves profile/focus and fits mobile')
         for width in [320,390,768,1280]:
             call('Emulation.setDeviceMetricsOverride',dict(width=width,height=900,deviceScaleFactor=1,mobile=False))
             assert js("document.querySelector('#player-dialog').scrollWidth<=document.querySelector('#player-dialog').clientWidth"),width
@@ -209,6 +226,7 @@ try:
         assert js("document.querySelectorAll('#pending-opponents li').length===0 && document.querySelector('#pending-summary').textContent.startsWith('Todos os seus jogos')")
         js("document.querySelector('[data-pending-turn=\"1\"]').click()")
         assert js("document.querySelector('#pending-summary').textContent.includes('Nenhuma partida')")
+        assert js("document.querySelector('#share-pending').disabled")
         print('OK: pending opponents in both orientations, distinct counts, both turns, filters, zero-zero played exclusion, empty state, escaped names, focus and mobile modal')
 
 
